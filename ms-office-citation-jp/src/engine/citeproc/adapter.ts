@@ -2,6 +2,8 @@ import { CiteEngine, CitationStyle } from '../interfaces';
 
 // Import citeproc from npm
 import CSL from 'citeproc';
+import jisCslXml from '../../styles/jis-like.csl';
+import jaLocaleXml from '../../locales/ja.xml';
 
 export class CiteProcEngine implements CiteEngine {
   private processor: any = null;
@@ -15,10 +17,13 @@ export class CiteProcEngine implements CiteEngine {
     this.processor = new CSL.Engine(style, locale);
   }
 
-  formatInText(keys: string[], ctx: { style: CitationStyle; seqMap?: Record<string, number> }): string {
+  formatInText(keys: string[], _ctx: { style: CitationStyle; seqMap?: Record<string, number> }): string {
     if (!this.processor) {
       throw new Error('Engine not initialized');
     }
+
+    // Use ctx.style for citation style
+    // TODO: Implement style switching if needed
 
     // Set citation items
     const citationItems = keys.map(key => ({ id: key }));

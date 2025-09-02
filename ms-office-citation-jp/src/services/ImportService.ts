@@ -1,48 +1,38 @@
-// TODO: Install and import citation-js properly
-// import { Cite } from '@citation-js/core';
+import { z } from 'zod';
+import Cite from '@citation-js/core';
+import '@citation-js/plugin-bibtex';
+import '@citation-js/plugin-ris';
+import '@citation-js/plugin-csl';
 
-export interface CSLItem {
-  id: string;
-  type: string;
-  title?: string;
-  author?: Array<{ family: string; given: string }>;
-  issued?: { 'date-parts': number[][] };
-  DOI?: string;
-  ISBN?: string;
-  // Add other fields as needed
-}
+const CSLJSONSchema = z.object({
+  id: z.string().optional(),
+  type: z.string(),
+  title: z.string().optional(),
+  author: z.array(z.object({ family: z.string().optional(), given: z.string().optional() })).optional(),
+  issued: z.any().optional(),
+  DOI: z.string().optional(),
+  ISBN: z.string().optional(),
+}).passthrough();
+export type CSLItem = z.infer<typeof CSLJSONSchema>;
 
 export class ImportService {
-  static async importBibTeX(bibTeX: string): Promise<CSLItem[]> {
-    // TODO: Use citation-js to parse BibTeX
-    // const cite = new Cite(bibTeX);
-    // return cite.data as CSLItem[];
-
-    // Placeholder
-    return [];
+  static toCSLJSON(input: string, format: 'bibtex'|'ris'|'csljson'): CSLItem[] {
+    if (format === 'csljson') {
+      const parsed = JSON.parse(input);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      return arr.map(x => CSLJSONSchema.parse(x));
+    }
+    const cite = new Cite(input, { forceType: format });
+    const data = cite.get({ type: 'json', style: 'csl' }) as any[];
+    return data.map(x => CSLJSONSchema.parse(x));
   }
 
-  static async importRIS(ris: string): Promise<CSLItem[]> {
-    // TODO: Use citation-js to parse RIS
-    // const cite = new Cite(ris);
-    // return cite.data as CSLItem[];
-
-    // Placeholder
-    return [];
-  }
-
-  static deduplicateItems(items: CSLItem[], existingItems: CSLItem[]): CSLItem[] {
-    const existingKeys = new Set(existingItems.map(item => this.generateKey(item)));
-    return items.filter(item => !existingKeys.has(this.generateKey(item)));
-  }
-
-  private static generateKey(item: CSLItem): string {
-    // Generate key based on DOI, ISBN, title + author + year
-    if (item.DOI) return `doi:${item.DOI}`;
-    if (item.ISBN) return `isbn:${item.ISBN}`;
-    const title = item.title || '';
-    const author = item.author?.[0]?.family || '';
-    const year = item.issued?.['date-parts']?.[0]?.[0] || '';
-    return `${title}-${author}-${year}`;
+  static stableKey(it: CSLItem): string {
+    if (it.DOI)  return `doi:${it.DOI.toLowerCase()}`;
+    if (it.ISBN) return `isbn:${it.ISBN.replace(/-/g,'')}`;
+    const year = (it as any).issued?.['date-parts']?.[0]?.[0] ?? '';
+    const title = (it.title ?? '').trim().toLowerCase().replace(/\s+/g,' ');
+    const au = (it.author?.[0]?.family ?? '').toLowerCase();
+    return `local:${au}|${year}|${title}`;
   }
 }
