@@ -1,3 +1,5 @@
+import { Titles, CiteTag } from '../storage/DocStore';
+
 export class WordApi {
   private static async getDocument(): Promise<Word.Document> {
     return Word.run(async (context) => {
@@ -15,11 +17,11 @@ export class WordApi {
       await context.sync();
 
       // Find existing bibliography CC
-      let bibCC = ccs.items.find(cc => cc.title === 'JIS-Bibliography');
+      let bibCC = ccs.items.find(cc => cc.title === Titles.Bib);
       if (!bibCC) {
         // Create new
         bibCC = doc.body.insertContentControl();
-        bibCC.title = 'JIS-Bibliography';
+        bibCC.title = Titles.Bib;
         bibCC.tag = 'msocj:bib';
         bibCC.appearance = Word.ContentControlAppearance.boundingBox;
         bibCC.color = '#CCCCCC';
@@ -29,12 +31,12 @@ export class WordApi {
     });
   }
 
-  static async createCiteCCAtSelection(tagJson: string, displayText: string): Promise<Word.ContentControl> {
+  static async createCiteCCAtSelection(tag: CiteTag, displayText: string): Promise<Word.ContentControl> {
     return Word.run(async (context) => {
       const selection = context.document.getSelection();
       const cc = selection.insertContentControl();
-      cc.title = 'JIS-Cite';
-      cc.tag = tagJson;
+      cc.title = Titles.Cite;
+      cc.tag = JSON.stringify(tag);
       cc.insertText(displayText, Word.InsertLocation.replace);
       cc.appearance = Word.ContentControlAppearance.boundingBox;
       await context.sync();
@@ -49,7 +51,7 @@ export class WordApi {
       ccs.load('items');
       await context.sync();
 
-      const citeCCs = ccs.items.filter(cc => cc.title === 'JIS-Cite');
+      const citeCCs = ccs.items.filter(cc => cc.title === Titles.Cite);
       return citeCCs;
     });
   }

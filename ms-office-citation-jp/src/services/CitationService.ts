@@ -1,5 +1,7 @@
 import { WordApi } from '../office/WordApi';
 import { CiteEngine, CitationStyle } from '../engine/interfaces';
+import { UserStore } from '../storage/UserStore';
+import { CiteTag } from '../storage/DocStore';
 
 export class CitationService {
   private engine: CiteEngine;
@@ -8,7 +10,15 @@ export class CitationService {
     this.engine = engine;
   }
 
-  async updateCitations(style: CitationStyle): Promise<void> {
+  async insertAtSelection(keys: string[]): Promise<void> {
+    const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
+    const style = settings?.style || 'author-date';
+    const text = this.engine.formatInText(keys, { style });
+    const tag: CiteTag = { keys, style, seq: null };
+    await WordApi.createCiteCCAtSelection(tag, text);
+  }
+
+  async updateAll(): Promise<void> {
     const citeCCs = await WordApi.enumerateCiteCCs();
 
     // Collect all keys and their order
@@ -16,8 +26,8 @@ export class CitationService {
     const keySet = new Set<string>();
 
     for (const cc of citeCCs) {
-      const tag = JSON.parse(cc.tag);
-      const keys = tag.keys as string[];
+      const tag: CiteTag = JSON.parse(cc.tag);
+      const keys = tag.keys;
       keys.forEach(key => {
         if (!keySet.has(key)) {
           keySet.add(key);
@@ -28,6 +38,8 @@ export class CitationService {
 
     // Create seqMap for numeric style
     const seqMap: Record<string, number> = {};
+    const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
+    const style = settings?.style || 'author-date';
     if (style === 'numeric') {
       keyOrder.forEach((key, index) => {
         seqMap[key] = index + 1;
@@ -36,8 +48,8 @@ export class CitationService {
 
     // Update each citation CC
     for (const cc of citeCCs) {
-      const tag = JSON.parse(cc.tag);
-      const keys = tag.keys as string[];
+      const tag: CiteTag = JSON.parse(cc.tag);
+      const keys = tag.keys;
       const newText = this.engine.formatInText(keys, { style, seqMap });
       cc.insertText(newText, Word.InsertLocation.replace);
     }

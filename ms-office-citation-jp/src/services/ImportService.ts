@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import Cite from '@citation-js/core';
+import { Cite } from '@citation-js/core';
 import '@citation-js/plugin-bibtex';
 import '@citation-js/plugin-ris';
 import '@citation-js/plugin-csl';
+import { UserStore } from '../storage/UserStore';
 
 const CSLJSONSchema = z.object({
   id: z.string().optional(),
@@ -34,5 +35,13 @@ export class ImportService {
     const title = (it.title ?? '').trim().toLowerCase().replace(/\s+/g,' ');
     const au = (it.author?.[0]?.family ?? '').toLowerCase();
     return `local:${au}|${year}|${title}`;
+  }
+
+  static async importAndMerge(input: string, format: 'bibtex'|'ris'|'csljson'): Promise<void> {
+    const incoming = this.toCSLJSON(input, format);
+    const lib = await UserStore.loadLibrary();
+    const map = new Map<string, any>(lib.map((x: any) => [this.stableKey(x), x]));
+    for (const it of incoming) map.set(this.stableKey(it), it);
+    await UserStore.saveLibrary(Array.from(map.values()));
   }
 }

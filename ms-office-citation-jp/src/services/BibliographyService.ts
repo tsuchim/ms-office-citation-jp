@@ -1,5 +1,7 @@
 import { WordApi } from '../office/WordApi';
-import { CiteEngine } from '../engine/interfaces';
+import { CiteEngine, CitationStyle } from '../engine/interfaces';
+import { UserStore } from '../storage/UserStore';
+import { CiteTag } from '../storage/DocStore';
 
 export class BibliographyService {
   private engine: CiteEngine;
@@ -8,21 +10,38 @@ export class BibliographyService {
     this.engine = engine;
   }
 
-  async updateBibliography(): Promise<void> {
+  async rebuild(): Promise<void> {
     const bibCC = await WordApi.findOrCreateBibliographyCC();
 
     // Collect all keys from citations
     const citeCCs = await WordApi.enumerateCiteCCs();
     const keySet = new Set<string>();
+    const keyOrder: string[] = [];
 
     for (const cc of citeCCs) {
-      const tag = JSON.parse(cc.tag);
-      const keys = tag.keys as string[];
-      keys.forEach(key => keySet.add(key));
+      const tag: CiteTag = JSON.parse(cc.tag);
+      const keys = tag.keys;
+      keys.forEach(key => {
+        if (!keySet.has(key)) {
+          keySet.add(key);
+          keyOrder.push(key);
+        }
+      });
     }
 
-    const keysInOrder = Array.from(keySet);
-    const html = this.engine.formatBibliography(keysInOrder);
+    // For numeric, sort by seq
+    const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
+    const style = settings?.style || 'author-date';
+    if (style === 'numeric') {
+      // Assume seq is set in tags
+      keyOrder.sort((a, b) => {
+        const aSeq = citeCCs.find(cc => JSON.parse(cc.tag).keys.includes(a))?.tag ? JSON.parse(citeCCs.find(cc => JSON.parse(cc.tag).keys.includes(a))!.tag).seq : 0;
+        const bSeq = citeCCs.find(cc => JSON.parse(cc.tag).keys.includes(b))?.tag ? JSON.parse(citeCCs.find(cc => JSON.parse(cc.tag).keys.includes(b))!.tag).seq : 0;
+        return (aSeq || 0) - (bSeq || 0);
+      });
+    }
+
+    const html = this.engine.formatBibliography(keyOrder);
 
     // Replace content
     bibCC.insertHtml(html, Word.InsertLocation.replace);

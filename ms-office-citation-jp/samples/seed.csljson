@@ -1,0 +1,88 @@
+[
+  {
+    "id": "sample1",
+    "type": "article-journal",
+    "title": "日本語論文の例",
+    "author": [
+      {
+        "family": "山田",
+        "given": "太郎"
+      }
+    ],
+    "issued": {
+      "date-parts": [[2023]]
+    },
+    "container-title": "日本学術雑誌",
+    "volume": "10",
+    "issue": "1",
+    "page": "1-10"
+  },
+  {
+    "id": "sample2",
+    "type": "book",
+    "title": "英語書籍の例",
+    "author": [
+      {
+        "family": "Smith",
+        "given": "John"
+      }
+    ],
+    "issued": {
+      "date-parts": [[2022]]
+    },
+    "publisher": "Academic Press",
+    "place": "New York"
+  },
+  {
+    "id": "sample3",
+    "type": "article-journal",
+    "title": "Another English Paper",
+    "author": [
+      {
+        "family": "Doe",
+        "given": "Jane"
+      }
+    ],
+    "issued": {
+      "date-parts": [[2021]]
+    },
+    "container-title": "Journal of Science",
+    "volume": "5",
+    "issue": "2",
+    "page": "100-110"
+  },
+  {
+    "id": "sample4",
+    "type": "book",
+    "title": "もう一つの日本語書籍",
+    "author": [
+      {
+        "family": "鈴木",
+        "given": "花子"
+      }
+    ],
+    "issued": {
+      "date-parts": [[2020]]
+    },
+    "publisher": "東京大学出版会",
+    "place": "東京"
+  },
+  {
+    "id": "sample5",
+    "type": "article-journal",
+    "title": "Final Sample Paper",
+    "author": [
+      {
+        "family": "Johnson",
+        "given": "Bob"
+      }
+    ],
+    "issued": {
+      "date-parts": [[2019]]
+    },
+    "container-title": "International Journal",
+    "volume": "3",
+    "issue": "4",
+    "page": "200-210"
+  }
+]
