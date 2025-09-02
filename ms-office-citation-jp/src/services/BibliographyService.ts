@@ -2,15 +2,17 @@ import { WordApi } from '../office/WordApi';
 import { CiteEngine, CitationStyle } from '../engine/interfaces';
 import { UserStore } from '../storage/UserStore';
 import { CiteTag } from '../storage/DocStore';
+import { Engine } from '../engine';
 
 export class BibliographyService {
-  private engine: CiteEngine;
+  private static engine: CiteEngine;
 
-  constructor(engine: CiteEngine) {
-    this.engine = engine;
+  static async init() {
+    await Engine.initOnce();
+    this.engine = Engine.engine;
   }
 
-  async rebuild(): Promise<void> {
+  static async rebuild(): Promise<void> {
     const bibCC = await WordApi.findOrCreateBibliographyCC();
 
     // Collect all keys from citations
@@ -41,7 +43,7 @@ export class BibliographyService {
       });
     }
 
-    const html = this.engine.formatBibliography(keyOrder);
+    const html = BibliographyService.engine.formatBibliography(keyOrder);
 
     // Replace content
     bibCC.insertHtml(html, Word.InsertLocation.replace);

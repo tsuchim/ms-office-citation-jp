@@ -1,5 +1,15 @@
 /* global Word console */
 
+import { Engine } from '../engine';
+import { CitationService } from '../services/CitationService';
+import { BibliographyService } from '../services/BibliographyService';
+
+(async () => {
+  await Engine.initOnce();
+  await CitationService.init();
+  await BibliographyService.init();
+})().catch(console.error);
+
 export async function insertText(text: string) {
   // Write text to the document.
   try {

@@ -34,13 +34,7 @@ module.exports = async (env, options) => {
     },
     module: {
       rules: [
-        {
-          test: /\.ts$/,
-          exclude: /node_modules/,
-          use: {
-            loader: "babel-loader",
-          },
-        },
+  // Handle TypeScript with ts-loader only (avoid double-processing with babel-loader)
         {
           test: /\.tsx?$/,
           exclude: /node_modules/,

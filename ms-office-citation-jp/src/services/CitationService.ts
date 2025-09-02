@@ -2,23 +2,25 @@ import { WordApi } from '../office/WordApi';
 import { CiteEngine, CitationStyle } from '../engine/interfaces';
 import { UserStore } from '../storage/UserStore';
 import { CiteTag } from '../storage/DocStore';
+import { Engine } from '../engine';
 
 export class CitationService {
-  private engine: CiteEngine;
+  private static engine: CiteEngine;
 
-  constructor(engine: CiteEngine) {
-    this.engine = engine;
+  static async init() {
+    await Engine.initOnce();
+    this.engine = Engine.engine;
   }
 
-  async insertAtSelection(keys: string[]): Promise<void> {
+  static async insertAtSelection(keys: string[]): Promise<void> {
     const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
     const style = settings?.style || 'author-date';
-    const text = this.engine.formatInText(keys, { style });
+    const text = CitationService.engine.formatInText(keys, { style });
     const tag: CiteTag = { keys, style, seq: null };
     await WordApi.createCiteCCAtSelection(tag, text);
   }
 
-  async updateAll(): Promise<void> {
+  static async updateAll(): Promise<void> {
     const citeCCs = await WordApi.enumerateCiteCCs();
 
     // Collect all keys and their order
@@ -50,7 +52,7 @@ export class CitationService {
     for (const cc of citeCCs) {
       const tag: CiteTag = JSON.parse(cc.tag);
       const keys = tag.keys;
-      const newText = this.engine.formatInText(keys, { style, seqMap });
+      const newText = CitationService.engine.formatInText(keys, { style, seqMap });
       cc.insertText(newText, Word.InsertLocation.replace);
     }
 
