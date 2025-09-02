@@ -43,7 +43,7 @@ export class BibliographyService {
       });
     }
 
-    const html = BibliographyService.engine.formatBibliography(keyOrder);
+  const html = await BibliographyService.engine.formatBibliography(keyOrder);
 
     // Replace content
     bibCC.insertHtml(html, Word.InsertLocation.replace);

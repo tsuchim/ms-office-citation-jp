@@ -1,53 +1,76 @@
 import { CiteEngine, CitationStyle } from '../interfaces';
-
-// Import citeproc from npm
 import CSL from 'citeproc';
-import jisCslXml from '../../styles/jis-like.csl';
-import jaLocaleXml from '../../locales/ja.xml';
+import { UserStore } from '../../storage/UserStore';
+import { ImportService } from '../../services/ImportService';
 
 export class CiteProcEngine implements CiteEngine {
   private processor: any = null;
+  private items: Record<string, any> = {};
+  private localeXml = '';
 
   async init(opts: { styleXml: string; localeXml: string }): Promise<void> {
-    // Parse style and locale
-    const style = CSL.parseXml(opts.styleXml);
-    const locale = CSL.parseXml(opts.localeXml);
-
-    // Create processor
-    this.processor = new CSL.Engine(style, locale);
+    this.localeXml = opts.localeXml;
+    const sys = {
+      retrieveLocale: (_lang: string) => this.localeXml,
+      retrieveItem: (id: string) => this.items[id],
+      // Minimal stubs
+      getAbbreviation: () => null,
+      state: {} as any,
+    } as any;
+    this.processor = new CSL.Engine(sys, opts.styleXml);
   }
 
-  formatInText(keys: string[], _ctx: { style: CitationStyle; seqMap?: Record<string, number> }): string {
-    if (!this.processor) {
-      throw new Error('Engine not initialized');
+  private async ensureItems(keys: string[]): Promise<void> {
+    // Load library and map requested keys to items
+    const lib: any[] = await UserStore.loadLibrary();
+    // Build index by stable key for quick lookup
+    const index = new Map<string, any>();
+    for (const it of lib) {
+      const k = ImportService.stableKey(it);
+      if (!index.has(k)) index.set(k, it);
     }
-
-    // Use ctx.style for citation style
-    // TODO: Implement style switching if needed
-
-    // Set citation items
-    const citationItems = keys.map(key => ({ id: key }));
-
-    // Configure processor for in-text citation
-    this.processor.updateItems(keys);
-
-    // Generate citation
-    const citation = this.processor.makeCitationCluster(citationItems);
-
-    return citation[1]; // The formatted citation string
+    for (const k of keys) {
+      const it = index.get(k);
+      if (it) {
+        // Clone and force id to key to satisfy citeproc
+        this.items[k] = { ...it, id: k };
+      } else {
+        // Missing item placeholder
+        this.items[k] = { id: k, title: '[?]' };
+      }
+    }
   }
 
-  formatBibliography(keysInOrder: string[]): string {
-    if (!this.processor) {
-      throw new Error('Engine not initialized');
+  async formatInText(keys: string[], _ctx: { style: CitationStyle; seqMap?: Record<string, number> }): Promise<string> {
+    if (!this.processor) throw new Error('Engine not initialized');
+    await this.ensureItems(keys);
+    const citationItems = keys.map((id) => ({ id }));
+    try {
+      this.processor.updateItems(keys);
+      const out = this.processor.makeCitationCluster(citationItems);
+      if (typeof out === 'string') return out;
+      if (Array.isArray(out)) {
+        if (typeof out[1] === 'string') return out[1];
+        if (Array.isArray(out[1])) return out[1].join('');
+      }
+    } catch (e) {
+      console.error('formatInText failed, fallback to keys', e);
     }
+    return `(${keys.join('; ')})`;
+  }
 
-    // Update items
-    this.processor.updateItems(keysInOrder);
-
-    // Generate bibliography
-    const bibliography = this.processor.makeBibliography();
-
-    return bibliography[1].join(''); // HTML string
+  async formatBibliography(keysInOrder: string[]): Promise<string> {
+    if (!this.processor) throw new Error('Engine not initialized');
+    await this.ensureItems(keysInOrder);
+    try {
+      this.processor.updateItems(keysInOrder);
+      const bibliography = this.processor.makeBibliography();
+      if (Array.isArray(bibliography) && Array.isArray(bibliography[1])) {
+        return bibliography[1].join('');
+      }
+    } catch (e) {
+      console.error('formatBibliography failed, fallback to plain list', e);
+    }
+    return keysInOrder.map((k) => `- ${k}`).join('\n');
   }
 }

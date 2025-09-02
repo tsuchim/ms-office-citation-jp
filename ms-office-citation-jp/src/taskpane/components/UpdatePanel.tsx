@@ -8,6 +8,9 @@ const useStyles = makeStyles({
   root: {
     padding: "20px",
   },
+  ml8: {
+    marginLeft: "8px",
+  },
 });
 
 const UpdatePanel: React.FC = () => {
@@ -30,7 +33,7 @@ const UpdatePanel: React.FC = () => {
         引用を更新
       </Button>
       <Button
-        style={{ marginLeft: 8 }}
+        className={styles.ml8}
         onClick={async () => {
           try {
             await BibliographyService.rebuild();

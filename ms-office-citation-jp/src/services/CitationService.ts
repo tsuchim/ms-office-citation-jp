@@ -13,9 +13,14 @@ export class CitationService {
   }
 
   static async insertAtSelection(keys: string[]): Promise<void> {
+    // Ensure engine is ready even if init() didn't run yet
+    if (!this.engine) {
+      await Engine.initOnce();
+      this.engine = Engine.engine;
+    }
     const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
     const style = settings?.style || 'author-date';
-    const text = CitationService.engine.formatInText(keys, { style });
+    const text = await CitationService.engine.formatInText(keys, { style });
     const tag: CiteTag = { keys, style, seq: null };
     await WordApi.createCiteCCAtSelection(tag, text);
   }
@@ -52,8 +57,8 @@ export class CitationService {
     for (const cc of citeCCs) {
       const tag: CiteTag = JSON.parse(cc.tag);
       const keys = tag.keys;
-      const newText = CitationService.engine.formatInText(keys, { style, seqMap });
-      cc.insertText(newText, Word.InsertLocation.replace);
+  const newText = await CitationService.engine.formatInText(keys, { style, seqMap });
+  cc.insertText(newText, Word.InsertLocation.replace);
     }
 
     await Word.run(async (context) => {
