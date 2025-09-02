@@ -1,14 +1,9 @@
 import * as React from "react";
-import Header from "./Header";
-import HeroList, { HeroListItem } from "./HeroList";
-import TextInsertion from "./TextInsertion";
-import { makeStyles } from "@fluentui/react-components";
-import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular } from "@fluentui/react-icons";
-import { insertText } from "../taskpane";
-
-interface AppProps {
-  title: string;
-}
+import { makeStyles, Tab, TabList } from "@fluentui/react-components";
+import LibraryPanel from "./LibraryPanel";
+import InsertPanel from "./InsertPanel";
+import UpdatePanel from "./UpdatePanel";
+import SettingsPanel from "./SettingsPanel";
 
 const useStyles = makeStyles({
   root: {
@@ -16,30 +11,34 @@ const useStyles = makeStyles({
   },
 });
 
-const App: React.FC<AppProps> = (props: AppProps) => {
+const App: React.FC = () => {
   const styles = useStyles();
-  // The list items are static and won't change at runtime,
-  // so this should be an ordinary const, not a part of state.
-  const listItems: HeroListItem[] = [
-    {
-      icon: <Ribbon24Regular />,
-      primaryText: "Achieve more with Office integration",
-    },
-    {
-      icon: <LockOpen24Regular />,
-      primaryText: "Unlock features and functionality",
-    },
-    {
-      icon: <DesignIdeas24Regular />,
-      primaryText: "Create and visualize like a pro",
-    },
-  ];
+  const [selectedTab, setSelectedTab] = React.useState("library");
+
+  const renderTab = () => {
+    switch (selectedTab) {
+      case "library":
+        return <LibraryPanel />;
+      case "insert":
+        return <InsertPanel />;
+      case "update":
+        return <UpdatePanel />;
+      case "settings":
+        return <SettingsPanel />;
+      default:
+        return <LibraryPanel />;
+    }
+  };
 
   return (
     <div className={styles.root}>
-      <Header logo="assets/logo-filled.png" title={props.title} message="Welcome" />
-      <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
-      <TextInsertion insertText={insertText} />
+      <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value as string)}>
+        <Tab value="library">ライブラリ</Tab>
+        <Tab value="insert">挿入</Tab>
+        <Tab value="update">更新</Tab>
+        <Tab value="settings">設定</Tab>
+      </TabList>
+      {renderTab()}
     </div>
   );
 };
