@@ -34,5 +34,6 @@
       "module": "commonjs"
     },
     "files": true 
-  }
+  },
+  "include": ["src/**/*", "types.d.ts"]
 }
