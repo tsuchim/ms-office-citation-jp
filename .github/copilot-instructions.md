@@ -3,191 +3,155 @@
 ## プロジェクト目的
 
 * Microsoft Word（Web/Teams/Win/Mac）の **Office アドイン**として、日本語執筆に耐える **引用・参考文献管理**を提供する
-* 初期は **サイドロード運用**。のちに **AppSource** 申請可能な品質へ
-* 短期は **実用性優先**：`citeproc-js + CSL` を採用。将来差し替え可能な抽象化層を持つ
+* **サイドロード運用 → AppSource 公開**まで見据える
+* **CSL + citeproc-js** による整形を採用（将来の独自実装差し替えも可能）
 
-## 主要機能（MVP）
+---
 
-* 文献データのインポート（CSL-JSON / BibTeX / RIS → 内部は CSL-JSON に正規化）
-* 文中引用の挿入（著者年 or 数字参照の2系統。設定で切替）
-* 文末の参考文献リスト自動生成・再生成（専用 Content Control を占有）
-* 既存引用の一括更新（重複マージ、順序・番号再割り当て）
-* 設定：言語（ja/en）、スタイル（JIS 風プリセット／APA など参考）
+## 全体設計方針
+
+* 文献データは **CSL-JSON** を正規化形式として統一
+* 文中引用は **Content Control(CC)** に JSON メタを埋め込み
+* 文末参考文献は **専用 CC 占有（単一）**。再生成は常に全置換
+* **抽象化層 (CiteEngine)** を必須とし、`citeproc-js` への直接依存を禁止
+* **冪等性・再生成で整合性が回復する設計**を徹底
+
+---
 
 ## 技術スタック
 
-* Office Add-in（Task Pane）: **TypeScript + React**
-* ビルド: Vite または Webpack（どちらでもよいが一貫性厳守）
-* ランタイム: `office-js`
-* 整形: `citeproc-js`（AGPLv3）、`CSL locales ja`
+* **TypeScript + React + Vite**
+* **office-js** (Word API)
+* **citeproc-js**（AGPLv3）, **citation-js**（BibTeX/RIS 変換, MIT）
 * 型・品質: `typescript`, `eslint`, `prettier`, `zod`
-* テスト: `vitest` or `jest`（どちらか統一）
-* i18n: 最小は `ja` 固定、メッセージは将来拡張できる構造で
+* テスト: `vitest`
+* i18n: まずは日本語固定（構造は拡張可能）
 
-## ライセンス方針
+---
 
-* リポジトリは **AGPL-3.0**（`citeproc-js` 内包のため）
-* `CSL`/スタイルファイルは CC-BY-SA 表記を `LICENSES/` に同梱
-* 将来エンジン差し替え時にライセンス再検討可。**エンジンは抽象化して依存を隔離**
+## データモデル
 
-## ディレクトリ構成（提案）
+* **UserStore** (`OfficeRuntime.storage`)
 
-```
-/src
-  /app           # UI（React）
-  /office        # Office.js 呼び出し（Word run, ribbon, commands）
-  /engine        # 形式変換・citeproc ラッパー（抽象化層）
-  /models        # 型定義（CSL-JSONスキーマ等）
-  /services      # 設定保存、ファイル入出力、ID発行
-  /styles        # UI スタイル
-  /utils         # 汎用
-/public
-/manifest        # manifest.xml, assets
-/scripts         # 開発補助（sideload 等）
-/tests
-/LICENSE
-```
+  * `library`: CSL-JSON 配列
+  * `settings`: style, locale, rules
+* **DocStore** (文書内 CC)
 
-## 抽象化インターフェース（差し替え前提）
+  * 引用CC: `title="JIS-Cite"`, `tag={"keys":[...],"style":"author-date","seq":n}`
+  * 文献リストCC: `title="JIS-Bibliography"`, `tag="msocj:bib"`
+  * 文書メタCC: `title="JIS-DocMeta"`, `tag={"style":"numeric","locale":"ja","map":{...}}`
+
+---
+
+## 抽象化インターフェース
 
 ```ts
-// engine/interfaces.ts
 export type CitationStyle = 'author-date' | 'numeric';
 
 export interface CiteEngine {
-  init(styleCslXml: string, localeXml: string): Promise<void>;
-  formatInText(itemKeys: string[], options: { style: CitationStyle }): string;
-  formatBibliography(itemKeys: string[]): string; // HTML or plain text
+  init(opts: { styleXml: string; localeXml: string }): Promise<void>;
+  formatInText(keys: string[], ctx: { style: CitationStyle; seqMap?: Record<string, number> }): string;
+  formatBibliography(keysInOrder: string[]): string; // HTML
 }
 ```
 
-* `engine/citeproc/` に `CiteEngine` 実装を置く
-* 将来独自実装へ差し替える場合は **この Interface の互換性を死守**
+* `engine/citeproc/adapter.ts` に `CiteEngine` 実装を配置
+* UI/サービス層は **この IF のみを利用**。内部実装に触れない
+
+---
 
 ## Word 連携規約
 
-* 文末参考文献は **Content Control** を専用占有
+* 文末参考文献は **単一 CC 占有**、常に全置換
+* 文中引用は **リッチテキスト CC**。過剰なフィールド依存は禁止
+* 更新は **明示操作ボタン**のみ。自動フック禁止
+* 大量処理はバッチ化＋進行表示
 
-  * `title: "JIS-Bibliography"` を常用
-* 文中引用は **テキスト**挿入（過度なフィールド依存は避ける）
-* 更新は **明示操作**（自動トリガは避ける）。`[引用更新]` ボタンで実行
-* 大量処理時は UI フリーズ回避（バッチ化、status 表示）
+---
 
-## データ取り扱い
+## UI 構造
 
-* 内部形式は **CSL-JSON**（正規化ユーティリティを作る）
-* 参照IDは **安定キー**（例: `source:doi:10.1234/...`、`cinii:NAID:...`、`local:uuid`）
-* `OfficeRuntime.storage` を基本ストアに。将来バックエンド連携可
-* 個人情報/通信は**既定でオフ**。外部API呼出は **明示オプトイン**
+* **タスクペイン** 4タブ:
 
-## 既定スタイル
+  1. **ライブラリ**（インポート/検索/削除）
+  2. **挿入**（選択→引用挿入）
+  3. **更新**（文中引用・文献リストの一括再生成）
+  4. **設定**（style, locale, 著者省略ルール等）
+* トースト通知＋処理中インジケータ必須
 
-* 既定は **JIS 風（著者. 年. 題名. 誌名, 巻(号), 頁.）** の CSL を同梱
-* 句読点/括弧は和文（、 。 （ ））
-* 著者名は和文は「姓 名」、欧文は `Family, Given`
-* 複数著者の省略は「ほか」
+---
 
-## コーディング規約（抜粋）
+## コーディング規約
 
-* TypeScript strict / ESLint + Prettier を必須
-* 副作用のある関数は戻り型に `Promise<void>` を避ける（戻り値で状態を返す）
-* UI はアクセスビリティ準拠（キーボード操作、aria）
-* 例外は握り潰さない。ユーザー可視なエラー表示を統一
+* strict TS / ESLint + Prettier
+* 例外握り潰し禁止。ユーザーに通知＋詳細ログ出力
+* 副作用関数は必ず戻り値型を定義
+* UI は a11y 準拠（aria/キーボード操作）
 
-## セキュリティ/プライバシ
+---
 
-* 外部送信（API/ログ/テレメトリ）は **デフォルト無効**
-* AppSource 想定の **Privacy Policy** 文案を `/docs/privacy.md` に用意
-* 依存ライブラリのライセンスは `pnpm licenses`/`npm ls --json` で検査
+## セキュリティ・プライバシ
+
+* 既定で **外部送信なし**。CiNii/Crossref API 利用はオプトイン
+* CSP で外部通信ドメインを制限
+* 依存ライブラリのライセンスは CI で検査 (`pnpm licenses`)
+* `/docs/privacy.md` に公開用プライバシーポリシーを置く
+
+---
 
 ## パフォーマンス指針
 
-* 大量文献（1000件程度）でのリスト生成に耐える
+* 1000件規模の文献に耐える
+* 差分更新を基本とし、再生成は O(n)
+* 重い処理は Web Worker 化を検討
 
-  * 差分更新（変更のあったキーのみ再整形）
-  * メインスレッド占有を避ける（必要あれば Web Worker）
+---
 
-## ビルド/実行（npm scripts 例）
+## 受け入れ基準（必要十分）
 
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "office:start": "office-addin-debugging start manifest/manifest.xml",
-    "office:stop": "office-addin-debugging stop"
-  }
-}
-```
+* 著者年／数値参照を切替可能。混在は警告で禁止
+* numeric モードでは初出順に採番 → 再生成で整合性回復
+* 文中引用 CC と Bib CC の**冪等性**保証
+* 欠損キーは `[?]` と明示表示＋ダイアログ通知
+* 再起動後もライブラリ・設定保持
+* 他PCでも文書内タグ情報から再生成可能
+* 依存ライセンスが `NOTICE` に全記録される
 
-## サイドロード手順（要約）
+---
 
-1. `npm i` → `npm run build`
-2. `manifest/manifest.xml` を Word Online の「アドインのアップロード」で指定
-3. タスクペインが開くことを確認
+## 開発タスク順序
 
-## PR/コミット規約
+1. Engine IF 実装（CiteEngine + citeproc adapter）
+2. WordApi（CC操作ユーティリティ）
+3. CitationService（採番・再描画ロジック）
+4. BibliographyService（リスト全置換生成）
+5. ImportService（CSL-JSON/BibTeX/RIS 正規化）
+6. UI（React タブ＋操作ボタン＋通知）
+7. 設定保存・復元
+8. 単体テスト（和2/英3ケースで通過必須）
 
-* Conventional Commits 準拠（`feat:`, `fix:`, `chore:`…）
-* PR には **目的・スクショ・テスト観点**を記載
-* 変更がエンジン層に触れる場合は **後方互換性**を説明
+---
 
-## 受け入れ基準（MVP Done）
+## 禁止事項
 
-* 5件の文献（和文2/英文3）で
+* Word ネイティブ「引用文献の管理」DBへの直接アクセス
+* 保存/印刷時など**暗黙トリガー**での更新処理
+* 個人データや文献メタを外部送信（許可なし）
+* **エージェントがやりがちなNG**:
 
-  * 文中引用（著者年/数字）を挿入できる
-  * 文末リストが JIS 風で生成される
-  * 追加・削除後に `[引用更新]` で整合が保たれる
-* 再起動後も文献/設定が保持される
-* 依存ライセンスの表記が `NOTICE` に出力される
+  * 同じ機能の再実装を繰り返す
+  * 一時しのぎのフォールバック処理でエラーを隠蔽
+  * コピペ改変で重複コードを量産
+  * 場当たり的修正で設計を崩す
 
-## 追加タスク（優先順）
-
-1. **インポートUI**（CSL-JSON/BibTeX/RIS）
-2. **JIS 風 CSL の同梱と単体テスト**
-3. **引用更新ロジック（重複統合/番号採番）**
-4. **Content Control 管理（存在検出・作成・置換）**
-5. **設定UI（スタイル/言語）**
-6. **エラーハンドリング/トースト通知**
-7. **簡易ドキュメント `/README.md`**
-
-## 明確な禁止事項 / 回避
-
-* Word ネイティブ「引用文献の管理」データベースとの直結はしない（Office.js API 非公開のため）
-* 自動でドキュメント保存/印刷時に処理を走らせない
-* 外部に個人データや文献メタデータを送信しない（明示許可がない限り）
-
-## 参考（最小コード断片）
-
-```ts
-// 文中引用挿入（概念）
-await Word.run(async ctx => {
-  const sel = ctx.document.getSelection();
-  const text = engine.formatInText(['local:uuid-1'], { style: 'author-date' });
-  sel.insertText(text, Word.InsertLocation.replace);
-  await ctx.sync();
-});
-
-// 参考文献リスト再生成（概念）
-await Word.run(async ctx => {
-  const body = ctx.document.body;
-  const cc = body.contentControls.getByTitle("JIS-Bibliography");
-  cc.load("items");
-  await ctx.sync();
-  const rng = cc.items.length ? cc.items.getFirst().getRange() : body.insertContentControl().getRange();
-  const html = engine.formatBibliography(allKeys);
-  rng.insertHtml(`<h2>参考文献</h2>${html}`, Word.InsertLocation.replace);
-  await ctx.sync();
-});
-```
+---
 
 ## エージェントへの振る舞いルール
 
-* 出力は **具体的なコードと差分**を優先。要約や長文解説は短く
-* 破壊的変更は PR で実施し、根拠を記載
-* 仕様不明点は **最小仮実装**→ TODO コメントで明示
-* フレームワーク・ライブラリの選定は **一貫性優先**。無断差し替え禁止
+* **一貫した設計を優先**し、指示された抽象化・API を厳守
+* 出力は **具体的なコード差分**を優先。解説は簡潔でよい
+* 不明点は「TODO コメント」で明示し、暫定コードに留める
+* 新規実装は既存仕様と突き合わせて重複を避ける
+* 破壊的変更は必ず PR + 根拠を提示
 
+---
