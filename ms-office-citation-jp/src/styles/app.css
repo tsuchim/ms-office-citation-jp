@@ -1,0 +1,27 @@
+/* 横はみ出し防止の基本 */
+html, body, #container, #root { width:100%; max-width:100%; min-width:0; overflow-x:hidden; box-sizing:border-box; }
+
+/* DetailsList を“極小”表示に寄せる */
+.ms-DetailsHeader, .ms-DetailsHeader-cell { min-height:28px; }
+.ms-DetailsHeader-cellTitle { font-size:12px; line-height:28px; }
+.ms-DetailsRow { min-height:28px; }
+.ms-DetailsRow-fields > .ms-DetailsRow-cell {
+  padding: 2px 6px;          /* セル余白を削減 */
+  box-sizing: border-box;
+}
+
+/* 著者は1行省略、タイトルは2行まで表示して省略（Edge/ChromiumでOK） */
+.cell-ellipsis {
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.cell-title-clamp {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; /* 2行 */
+  line-clamp: 2; /* 標準プロパティ */
+  overflow:hidden; word-break:break-word; line-height:1.25; max-height: 2.5em;
+}
+
+/* アイコン列を本当に小さく */
+.ms-DetailsRow-cell:first-child { width:16px !important; max-width:16px !important; padding-right:4px; }
+
+/* 列の余白を全体的に抑える */
+.ms-DetailsHeader-cell { padding: 0 6px; }

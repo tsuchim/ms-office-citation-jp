@@ -1,7 +1,8 @@
 import * as React from "react";
 import { makeStyles } from "@fluentui/react-components";
-import { Button, Text, TextField, DetailsList, DetailsListLayoutMode, Selection, IColumn, IconButton } from "@fluentui/react";
-import { useEffect, useState } from 'react';
+import { Button, TextField, Stack, Text } from '@fluentui/react';
+import { DetailsList, DetailsListLayoutMode, ConstrainMode, IColumn, CheckboxVisibility } from '@fluentui/react/lib/DetailsList';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { UserStore } from '../../storage/UserStore';
 import { ImportService } from '../../services/ImportService';
 import { CitationService } from '../../services/CitationService';
@@ -11,131 +12,201 @@ import { toast } from '../../app/toast';
 type Row = { key: string; title: string; author: string; year: string; type: string; containerTitle: string; doi: string; isbn: string };
 
 const useStyles = makeStyles({
-  root: {
-    padding: "8px 12px",
-    width: "100%",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-    overflowX: "hidden",
-  },
-  mb8: {
-    marginBottom: "8px",
-  },
-  mt8: {
-    marginTop: "8px",
-  },
-  ml8: {
-    marginLeft: "8px",
-  },
-  toolbar: {
-    display: "flex",
-    gap: "8px",
-    alignItems: "center",
-    marginBottom: "8px",
-    flexWrap: "wrap",
-    "@media (max-width: 480px)": { flexDirection: "column", alignItems:"stretch" },
-  },
+  root: { width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" },
+  mb8: { marginBottom: "8px" },
+  mt8: { marginTop: "8px" },
+  ml8: { marginLeft: "8px" },
+  toolbar: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px", "@media (max-width: 480px)": { flexDirection: "column", alignItems:"stretch" } },
   search: { width: "100%" },
-  titleCell: {
-    display: "block",
-    whiteSpace: "normal",
-    wordBreak: "break-word",
-    lineHeight: 1.3,
+  titleCell: { display: "block", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 },
+
+  cell: {
+    fontSize: "12px",
+    lineHeight: "16px",
+    padding: "4px 8px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
+
+  title: {
+    fontSize: "12px",
+    lineHeight: "16px",
+    padding: "4px 8px",
+    whiteSpace: "normal",
+    // ★ 日本語の“1文字折り”を避ける
+    wordBreak: "keep-all",
+    overflowWrap: "anywhere",
+    // ★ 2行でクランプ（読みやすく、縦長になりすぎない）
+    display: "-webkit-box",
+    WebkitLineClamp: "2",
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  },
+
+  authorBold: { fontWeight: 600 },
+
+  yearChip: {
+    display: "inline-block",
+    minWidth: "44px",
+    maxWidth: "56px",
+    textAlign: "center",
+    padding: "0 6px",
+    lineHeight: "18px",
+    height: "18px",
+    borderRadius: "9px",
+    background: "#f2f2f2",
+    color: "#333",
+    fontSize: "11px",
+    marginLeft: "6px",
+  },
+
+  // 1列（積層）表示用
+  stackedMain: { display: "flex", alignItems: "center", gap: "4px" },
+  stackedSub:  { color: "#666", fontSize: "11px", lineHeight: "14px", marginTop: "2px" },
+  cellContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    flex: '1 1 auto',
+    minWidth: 0,
+  },
+  primary: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+  },
+  secondary: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+  },
+  yearChipMargin: { marginLeft: "6px", color: "#666" },
+  listHost: { width: '100%', minWidth: '280px', overflowX: 'hidden' },
+  debug: { fontSize: '11px', opacity: 0.6 },
+});
+
+const useCompactStyles = makeStyles({
+  root: { width: "100%", maxWidth: "100%", minWidth: 0, overflowX: "hidden" },
+  cell: {
+    fontSize: "12px", lineHeight: "16px", padding: "2px 8px",
+    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+  },
+  titleCell: {
+    fontSize: "12px", lineHeight: "16px", padding: "2px 8px",
+    whiteSpace: "normal", wordBreak: "break-word",
+  },
+  yearChip: {
+    display: "inline-block",
+    minWidth: "44px", maxWidth: "52px", textAlign: "center",
+    padding: "0 6px", lineHeight: "18px", height: "18px",
+    borderRadius: "9px", background: "#f2f2f2", color: "#333",
+    fontSize: "11px",
+  },
+  stackedMain: { fontWeight: 600 },
+  stackedSub:  { color: "#666", fontSize: "11px", lineHeight: "14px", marginTop: "2px" },
+  yearChipMargin: { marginLeft: "6px", color: "#666" },
 });
 
 interface LibraryPanelProps {
   onItemSelect: (item: any) => void;
 }
 
+const LIST_POLICY = {
+  minColPx: 280, maxColPx: 4096,
+  narrowThreshold: 360,   // <360px は積層1列
+  mediumThreshold: 480,   // 360–479px は3列
+  yearMin: 48, yearMax: 56,
+  authorMin: 96, authorMax: 160,
+  titleMin: 120,
+} as const;
+
 const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
   const styles = useStyles();
+  const s = useCompactStyles();
   const [rows, setRows] = useState<Row[]>([]);
   const [filteredRows, setFilteredRows] = useState<Row[]>([]);
   const [search, setSearch] = useState<string>('');
+  const [mode, setMode] = React.useState<"narrow"|"medium"|"wide">("narrow");
+  const [widthMode, setWidthMode] = useState<'narrow'|'medium'|'wide'>('narrow');
+  const [sort, setSort] = useState<{ key?: "title" | "author" | "year", asc: boolean }>({ asc: true });
   const [searchIndex, setSearchIndex] = useState<Map<string, Set<string>>>(new Map());
-  const [selection] = useState(() => new Selection({
-    onSelectionChanged: () => {
-      const selected = selection.getSelection();
-      if (selected.length > 0) {
-        onItemSelect(selected[0]);
-      }
-    }
-  }));
 
-  const columns: IColumn[] = [
-    {
-      key: 'type',
-      name: ' ',
-      fieldName: 'type',
-      minWidth: 24,
-      maxWidth: 24,
-      isResizable: false,
-      onRender: (item: Row) => <span>{getTypeIcon(item.type)}</span>,
-    },
-    {
-      key: 'author',
-      name: '著者',
-      fieldName: 'author',
-      minWidth: 80,
-      maxWidth: 140,
-      isResizable: true,
-      isSorted: true,
-      isSortedDescending: false,
-      onColumnClick: () => sortBy('author'),
-    },
-    {
-      key: 'year',
-      name: '年',
-      fieldName: 'year',
-      minWidth: 52,
-      maxWidth: 56,
-      isResizable: false,
-      isSorted: true,
-      isSortedDescending: true,
-      onColumnClick: () => sortBy('year'),
-    },
-    {
-      key: 'title',
-      name: 'タイトル',
-      fieldName: 'title',
-      minWidth: 120,
-      isResizable: true,
-      isMultiline: true,
-      onRender: (item: Row) => <span className={styles.titleCell}>
-        {item.title}
-      </span>,
-    },
-    {
-      key: 'containerTitle',
-      name: '出典',
-      fieldName: 'containerTitle',
-      minWidth: 100,
-      maxWidth: 150,
-      onRender: (item: Row) => <span title={item.containerTitle}>{item.containerTitle.length > 30 ? item.containerTitle.substring(0, 30) + '...' : item.containerTitle}</span>,
-    },
-    {
-      key: 'doi',
-      name: 'DOI/ISBN',
-      fieldName: 'doi',
-      minWidth: 100,
-      maxWidth: 120,
-      onRender: (item: Row) => <span title={item.doi || item.isbn}>{(item.doi || item.isbn || '').substring(0, 20) + ((item.doi || item.isbn || '').length > 20 ? '...' : '')}</span>,
-    },
-    {
-      key: 'actions',
-      name: '',
-      minWidth: 120,
-      onRender: (item: Row) => (
-        <div>
-          <IconButton iconProps={{ iconName: 'QuickNote' }} title="引用" onClick={() => handleCite(item.key)} />
-          <IconButton iconProps={{ iconName: 'Edit' }} title="編集" onClick={() => onItemSelect(rows.find(r => r.key === item.key))} />
-          <IconButton iconProps={{ iconName: 'Delete' }} title="削除" onClick={() => handleDelete(item.key)} />
-          <IconButton iconProps={{ iconName: 'Add' }} title="追加" onClick={() => handleAdd()} />
+  const onColumnClick = useCallback((_ev?: React.MouseEvent<HTMLElement>, col?: IColumn) => {
+    if (!col) return;
+    const newSort = sort.key === col.key ? { key: col.key, asc: !sort.asc } : { key: col.key as "title" | "author" | "year", asc: true };
+    setSort(newSort);
+  }, [sort]);
+
+  const renderAuthorYear = useCallback((item: any) => (
+    <span>
+      <span className={styles.authorBold}>{item.author}</span>
+      <span className={styles.yearChipMargin}>({item.year})</span>
+    </span>
+  ), [styles]);
+
+  const renderDocCell = useCallback((item: any) => (
+    <div className={styles.cellContent}>
+      <div className={styles.primary}>{renderAuthorYear(item)}</div>
+      <div className={styles.secondary}>{item.title}</div>
+    </div>
+  ), [styles, renderAuthorYear]);
+
+  const [columns, setColumns] = useState<IColumn[]>([
+    { key:'doc', name:'文献', fieldName: 'title', minWidth: LIST_POLICY.minColPx, maxWidth: LIST_POLICY.maxColPx, isResizable: false, isMultiline: true, onRender: renderDocCell },
+  ]);
+
+  const [stackColumns, setStackColumns] = useState<IColumn[]>([
+    { key:'stack', name:'文献', minWidth: LIST_POLICY.minColPx, isResizable:true }
+  ]);
+  const hostRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!hostRef.current) return;
+    const ro = new ResizeObserver(([e]) => {
+      const w = e.contentRect.width;
+      if (w < LIST_POLICY.narrowThreshold) {
+        setMode("narrow");
+        setWidthMode('narrow');
+      } else if (w < LIST_POLICY.mediumThreshold) {
+        setMode("medium");
+        setWidthMode('medium');
+      } else {
+        setMode("wide");
+        setWidthMode('wide');
+      }
+    });
+    ro.observe(hostRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const onRenderItemColumn = useCallback((item: any, _index?: number, column?: IColumn) => {
+    if (!column) return null;
+    const key = column.key;
+    if (mode === 'narrow') {
+      return (
+        <div className={styles.cellContent}>
+          <Text variant="small" styles={{ root: { fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word' } }}>{item.author}</Text>
+          <Text variant="small" styles={{ root: { color: '#666', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word' } }}>({item.year})</Text>
+          <Text variant="small" block styles={{ root: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', wordBreak: 'break-word' } }}>{item.title}</Text>
         </div>
-      ),
-    },
-  ];
+      );
+    }
+    switch (key) {
+      case 'author':
+        return <Text variant="small" styles={{ root: { fontWeight: 600, wordBreak: 'break-word', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' } }}>{item.author}</Text>;
+      case 'year':
+        return <Text variant="small" styles={{ root: { color: '#666', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' } }}>{item.year}</Text>;
+      case 'title':
+        return <Text variant="small" block styles={{ root: { wordBreak: 'break-word', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal' } }}>{item.title}</Text>;
+      default:
+        return null;
+    }
+  }, [mode]);
 
   async function refresh() {
     const lib = await UserStore.loadLibrary();
@@ -190,108 +261,56 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
     setFilteredRows(filtered);
   }, [search, rows, searchIndex]);
 
-  const sortBy = (field: string) => {
-    const sorted = [...filteredRows].sort((a, b) => {
-      if (field === 'author') return a.author.localeCompare(b.author);
-      if (field === 'year') return parseInt(b.year) - parseInt(a.year);
-      return 0;
+  // 初回orデータ変化時の既定ソート
+  const baseSorted = useMemo(() => {
+    const arr = [...rows];
+    arr.sort((a,b) => {
+      const A = (a.author || '').localeCompare(b.author || '', 'ja');
+      if (A) return A;
+      const Y = String(a.year||'').localeCompare(String(b.year||''));
+      if (Y) return Y;
+      return (a.title||'').localeCompare(b.title||'', 'ja');
     });
-    setFilteredRows(sorted);
-  };
+    return arr;
+  }, [rows]);
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'article-journal': return '📄';
-      case 'book': return '📖';
-      case 'chapter': return '📑';
-      case 'paper-conference': return '🎤';
-      case 'thesis': return '🎓';
-      case 'report': return '📊';
-      case 'webpage': return '🌐';
-      case 'dataset': return '💾';
-      case 'software': return '💻';
-      default: return '📄';
-    }
-  };
-
-  const handleCite = async (key: string) => {
-    try {
-      await CitationService.insertAtSelection([key]);
-      toast('引用を挿入しました', 'success');
-    } catch (e) {
-      console.error(e);
-      toast('挿入に失敗しました', 'error');
-    }
-  };
-
-  const handleDelete = async (key: string) => {
-    if (!confirm('削除しますか？')) return;
-    try {
-      const lib = await UserStore.loadLibrary();
-      const filtered = lib.filter(it => ImportService.stableKey(it) !== key);
-      await UserStore.saveLibrary(filtered);
-      toast('削除しました', 'success');
-      await refresh();
-    } catch (e) {
-      console.error(e);
-      toast('削除に失敗しました', 'error');
-    }
-  };
-
-  const handleAdd = () => {
-    onItemSelect(null); // 新規追加
-  };
-
-  const handleLoadSample = async () => {
-    try {
-      const res = await fetch('/samples/seed.csljson');
-      const text = await res.text();
-      await ImportService.importAndMerge(text, 'csljson');
-      toast('サンプルを読み込みました', 'success');
-      await refresh();
-    } catch (e) {
-      console.error(e);
-      toast('サンプル読み込みに失敗', 'error');
-    }
-  };
-
-  const handleSaveShared = async () => {
-    const settings = await UserStore.loadSettings<{ sharedLibrary?: { enabled: boolean; filename: string } }>();
-    if (!settings?.sharedLibrary?.enabled) {
-      toast('共有ライブラリが有効になっていません', 'info');
-      return;
-    }
-    await SharedLibraryService.saveToFolder(settings.sharedLibrary.filename);
-  };
+  // ヘッダクリック適用
+  const sorted = useMemo(() => {
+    if (!sort.key) return baseSorted;
+    const k = sort.key;
+    const arr = [...baseSorted];
+    arr.sort((a,b) => (String(a[k]||'').localeCompare(String(b[k]||''), 'ja')) * (sort.asc ? 1 : -1));
+    return arr;
+  }, [baseSorted, sort]);
 
   return (
-    <div className={styles.root}>
-      <Text>ライブラリ</Text>
-      <div className={styles.mb8}>
-        <TextField className={styles.search} placeholder="検索 (タイトル/著者/年/DOI/ISBN)" value={search} onChange={(_, newValue) => setSearch(newValue || '')} />
-      </div>
-      <div className={styles.toolbar}>
-        <Button onClick={handleLoadSample}>サンプル読み込み</Button>
-        <Button onClick={handleSaveShared}>共有保存</Button>
-      </div>
-      <DetailsList
-        items={filteredRows}
-        columns={columns}
-        setKey="key"
-        layoutMode={DetailsListLayoutMode.fixedColumns} // 列幅の暴走防止
-        compact={true}                                  // 行高を詰める
-        isHeaderVisible={true}
-        selection={selection}
-        selectionPreservedOnEmptyClick={true}
-        enterModalSelectionOnTouch={true}
-        styles={{
-          root: {
-            overflowX: "hidden", // 横スクロール禁止
-            width: "100%", maxWidth: "100%", minWidth: 0,
-          },
-        }}
-      />
-    </div>
+    <Stack verticalFill styles={{ root: { minWidth: 0, minHeight: 0 } }}>
+      <Stack.Item grow disableShrink styles={{ root: { minWidth: 0, minHeight: 0, display:'flex' } }}>
+        <div ref={hostRef} className={styles.root}>
+          <div className={styles.toolbar}>
+            <TextField className={styles.search} value={search} onChange={(_, v) => setSearch(v || '')} placeholder="検索 (タイトル/著者/年/DOI/ISBN)" />
+            <Button onClick={() => { /* 追加ボタンの処理 */ }}>追加</Button>
+          </div>
+          <div className={styles.debug}>
+            host={hostRef.current?.clientWidth ?? 0}px / mode={widthMode}
+          </div>
+          <DetailsList
+            items={sorted}
+            columns={mode === 'narrow' ? stackColumns : columns}
+            onRenderItemColumn={onRenderItemColumn}
+            onColumnHeaderClick={onColumnClick}
+            onItemInvoked={onItemSelect}
+            layoutMode={DetailsListLayoutMode.justified}
+            constrainMode={ConstrainMode.unconstrained}
+            compact={true}
+            checkboxVisibility={2}
+            selectionMode={0}
+            setKey={widthMode}
+            styles={{ root: { width: '100%' } }}
+          />
+        </div>
+      </Stack.Item>
+    </Stack>
   );
 };
 
