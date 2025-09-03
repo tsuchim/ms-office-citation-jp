@@ -1,44 +1,58 @@
 import * as React from "react";
-import { makeStyles, Tab, TabList } from "@fluentui/react-components";
+import { makeStyles } from "@fluentui/react-components";
+import AppBar from "./AppBar";
 import LibraryPanel from "./LibraryPanel";
-import InsertPanel from "./InsertPanel";
-import UpdatePanel from "./UpdatePanel";
-import SettingsPanel from "./SettingsPanel";
+import ReferenceDetailPanel from "./ReferenceDetailPanel";
 
 const useStyles = makeStyles({
   root: {
     minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+  },
+  main: {
+    flex: 1,
+    display: "flex",
+  },
+  left: {
+    flex: 7,
+    borderRight: "1px solid #ddd",
+  },
+  right: {
+    flex: 5,
+    padding: "16px",
   },
 });
 
 const App: React.FC = () => {
   const styles = useStyles();
-  const [selectedTab, setSelectedTab] = React.useState("library");
+  const [selectedItem, setSelectedItem] = React.useState<any>(null);
+  const [styleId, setStyleId] = React.useState("jis-like");
 
-  const renderTab = () => {
-    switch (selectedTab) {
-      case "library":
-        return <LibraryPanel />;
-      case "insert":
-        return <InsertPanel />;
-      case "update":
-        return <UpdatePanel />;
-      case "settings":
-        return <SettingsPanel />;
-      default:
-        return <LibraryPanel />;
-    }
+  const handleGlobalSearch = (query: string) => {
+    // 詳細編集ダイアログを開く（後で実装）
+    console.log("Global search:", query);
+  };
+
+  const handleStyleChange = (styleId: string) => {
+    setStyleId(styleId);
+  };
+
+  const handleSync = () => {
+    // 同期後の処理
   };
 
   return (
     <div className={styles.root}>
-      <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value as string)}>
-        <Tab value="library">ライブラリ</Tab>
-        <Tab value="insert">挿入</Tab>
-        <Tab value="update">更新</Tab>
-        <Tab value="settings">設定</Tab>
-      </TabList>
-      {renderTab()}
+      <AppBar onGlobalSearch={handleGlobalSearch} onStyleChange={handleStyleChange} onSync={handleSync} />
+      <div className={styles.main}>
+        <div className={styles.left}>
+          <LibraryPanel onItemSelect={setSelectedItem} />
+        </div>
+        <div className={styles.right}>
+          <ReferenceDetailPanel selectedItem={selectedItem} />
+        </div>
+      </div>
     </div>
   );
 };

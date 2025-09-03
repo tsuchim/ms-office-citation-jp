@@ -31,7 +31,7 @@ const EditCitationDialog: React.FC<{ keys: string[] }> = ({ keys }) => {
 
   const insertWithOptions = async () => {
     try {
-      await CitationService.insertAtSelection(keys, options);
+      await CitationService.insertAtSelection(keys, [options]);
       toast('引用を挿入しました', 'success');
     } catch (e) {
       console.error(e);

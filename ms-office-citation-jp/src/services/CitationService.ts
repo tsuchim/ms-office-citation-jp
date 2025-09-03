@@ -12,7 +12,7 @@ export class CitationService {
     this.engine = Engine.engine;
   }
 
-  static async insertAtSelection(keys: string[], options?: CitationOptions): Promise<void> {
+  static async insertAtSelection(keys: string[], options?: CitationOptions[]): Promise<void> {
     // Ensure engine is ready even if init() didn't run yet
     if (!this.engine) {
       await Engine.initOnce();
@@ -20,7 +20,7 @@ export class CitationService {
     }
     const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
     const style = settings?.style || 'author-date';
-    const text = await CitationService.engine.formatInText(keys, { style, options });
+    const text = await CitationService.engine.formatInText(keys, { style, options: Array.isArray(options) ? options[0] : options });
     const tag: CiteTag = { keys, style, seq: null, options };
     await WordApi.createCiteCCAtSelection(tag, text);
 
@@ -65,6 +65,27 @@ export class CitationService {
   const newText = await CitationService.engine.formatInText(keys, { style, seqMap });
   cc.insertText(newText, Word.InsertLocation.replace);
     }
+
+    await Word.run(async (context) => {
+      await context.sync();
+    });
+  }
+
+  static async updateGroup(citeControlId: string, items: { key: string; prefix?: string; suffix?: string; locator?: string; suppressAuthor?: boolean; suppressYear?: boolean }[]): Promise<void> {
+    // Find the CC by ID and update its tag and text
+    const citeCCs = await WordApi.enumerateCiteCCs();
+    const cc = citeCCs.find(c => String(c.id) === citeControlId);
+    if (!cc) throw new Error('Citation control not found');
+
+    const tag: CiteTag = JSON.parse(cc.tag);
+    tag.options = items;
+
+    const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
+    const style = settings?.style || 'author-date';
+    const keys = items.map(item => item.key);
+    const newText = await CitationService.engine.formatInText(keys, { style, options: Array.isArray(tag.options) ? tag.options[0] : tag.options });
+    cc.insertText(newText, Word.InsertLocation.replace);
+    cc.tag = JSON.stringify(tag);
 
     await Word.run(async (context) => {
       await context.sync();

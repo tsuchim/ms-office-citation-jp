@@ -43,7 +43,7 @@ export class BibliographyService {
       });
     }
 
-  const html = await BibliographyService.engine.formatBibliography(keyOrder);
+    const html = await BibliographyService.engine.formatBibliography(keyOrder);
 
     // Replace content
     bibCC.insertHtml(html, Word.InsertLocation.replace);
@@ -51,5 +51,27 @@ export class BibliographyService {
     await Word.run(async (context) => {
       await context.sync();
     });
+  }
+
+  static async formatBibliography(keys: string[]): Promise<string> {
+    if (!this.engine) {
+      await Engine.initOnce();
+      this.engine = Engine.engine;
+    }
+    // TODO: Switch style if needed
+    return await this.engine.formatBibliography(keys);
+  }
+
+  static async updateBibliographyInDocument(styleId: string): Promise<void> {
+    // Update style in settings
+    const settings: { style?: CitationStyle } = await UserStore.loadSettings() || {};
+    settings.style = styleId as CitationStyle;
+    await UserStore.saveSettings(settings);
+
+    // TODO: Reinitialize engine with new style
+    await Engine.initOnce();
+
+    // Rebuild bibliography
+    await this.rebuild();
   }
 }
