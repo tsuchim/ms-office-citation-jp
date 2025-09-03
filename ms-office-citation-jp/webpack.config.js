@@ -7,7 +7,9 @@ const webpack = require("webpack");
 
 const urlDev = "https://localhost:3000/";
 // GitHub Pages の公開URL（tsuchim/ms-office-citation-jp 固定）
-const urlProd = 'https://tsuchim.github.io/ms-office-citation-jp/'; 
+const urlProd =
+  process.env.PROD_BASE_URL ||
+  'https://tsuchim.github.io/ms-office-citation-jp/'; 
 
 async function getHttpsOptions() {
   const httpsOptions = await devCerts.getHttpsServerOptions();

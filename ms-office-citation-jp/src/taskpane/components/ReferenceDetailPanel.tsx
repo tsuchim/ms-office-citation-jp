@@ -1,5 +1,7 @@
 import * as React from "react";
 import { makeStyles, Button, Input, Textarea, Dropdown, Option, Text } from "@fluentui/react-components";
+import { Dialog, DialogFooter } from '@fluentui/react/lib/Dialog';
+import { PrimaryButton, DefaultButton } from '@fluentui/react/lib/Button';
 import { UserStore } from "../../storage/UserStore";
 import { ImportService } from "../../services/ImportService";
 import { SharedLibraryService } from "../../services/SharedLibraryService";
@@ -86,6 +88,7 @@ const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedIte
   const styles = useStyles();
   const [item, setItem] = React.useState<any>(selectedItem || { type: "article-journal" });
   const [authors, setAuthors] = React.useState<any[]>(selectedItem?.author || []);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (selectedItem) {
@@ -136,8 +139,10 @@ const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedIte
     setAuthors([...authors]);
   };
 
-  const handleDelete = async () => {
-    if (!confirm("削除しますか？")) return;
+  const handleDeleteClick = () => setConfirmOpen(true);
+
+  const handleConfirmDelete = async () => {
+    setConfirmOpen(false);
     try {
       const lib = await UserStore.loadLibrary();
       const filtered = lib.filter(it => ImportService.stableKey(it) !== ImportService.stableKey(item));
@@ -268,9 +273,22 @@ const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedIte
       <div className={styles.buttons}>
         <Button onClick={handleSave}>保存</Button>
         <Button onClick={handleDuplicate}>複製</Button>
-        <Button onClick={handleDelete}>削除</Button>
+        <Button onClick={handleDeleteClick}>削除</Button>
         <Button onClick={handleClose}>閉じる</Button>
       </div>
+      <Dialog
+        hidden={!confirmOpen}
+        onDismiss={() => setConfirmOpen(false)}
+        dialogContentProps={{
+          title: '削除確認',
+          subText: '本当に削除してもよろしいですか？',
+        }}
+      >
+        <DialogFooter>
+          <PrimaryButton onClick={handleConfirmDelete} text="はい" />
+          <DefaultButton onClick={() => setConfirmOpen(false)} text="いいえ" />
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 };

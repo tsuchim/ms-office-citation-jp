@@ -5,15 +5,19 @@ let msal: PublicClientApplication | null = null;
 
 export async function getMsal(): Promise<PublicClientApplication> {
   if (msal) return msal;
-  const cfg = await loadConfig();
+  const cfg = await loadConfig(); // { azureClientId, authority, redirectUri }
+  if (!cfg.azureClientId) {
+    throw new Error('Missing azureClientId in config.json');
+  }
   msal = new PublicClientApplication({
     auth: {
       clientId: cfg.azureClientId,
       authority: cfg.authority,
-      redirectUri: cfg.redirectUri
+      redirectUri: cfg.redirectUri,
     },
-    cache: { cacheLocation: 'sessionStorage' }
+    cache: { cacheLocation: 'sessionStorage' },
   });
+  await msal.initialize();
   return msal;
 }
 
