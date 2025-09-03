@@ -41,3 +41,18 @@ html, body, #container, #root { width:100%; max-width:100%; overflow-x:hidden; b
   width: auto !important;
   max-width: none !important;
 }
+
+/* セル内Flexの仕上げ（日本語/英語混在の折返し） */
+.cellContent{
+  display:flex; flex-direction:column;
+  width:100%; flex:1 1 auto; min-width:0; line-height:1.4;
+}
+.primary{
+  font-weight:600;
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.secondary{
+  min-width:0; overflow:hidden; white-space:normal; word-break:normal; overflow-wrap:break-word;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  line-clamp: 2;
+}

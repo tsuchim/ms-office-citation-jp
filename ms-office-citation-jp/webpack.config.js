@@ -6,7 +6,8 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
 
 const urlDev = "https://localhost:3000/";
-const urlProd = "https://www.contoso.com/"; // CHANGE THIS TO YOUR PRODUCTION DEPLOYMENT LOCATION
+// GitHub Pages の公開URL（tsuchim/ms-office-citation-jp 固定）
+const urlProd = 'https://tsuchim.github.io/ms-office-citation-jp/'; 
 
 async function getHttpsOptions() {
   const httpsOptions = await devCerts.getHttpsServerOptions();
@@ -28,6 +29,8 @@ module.exports = async (env, options) => {
     },
     output: {
       clean: true,
+      path: __dirname + "/dist",
+      publicPath: "auto",
     },
     resolve: {
       extensions: [".ts", ".tsx", ".html", ".js"],
