@@ -75,9 +75,10 @@ const useStyles = makeStyles({
 
 interface ReferenceDetailPanelProps {
   selectedItem: any;
+  onBack?: () => void;
 }
 
-const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedItem }) => {
+const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedItem, onBack }) => {
   const styles = useStyles();
   const [item, setItem] = React.useState<any>(selectedItem || { type: "article-journal" });
   const [authors, setAuthors] = React.useState<any[]>(selectedItem?.author || []);
@@ -112,6 +113,7 @@ const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedIte
       }
       await UserStore.saveLibrary(lib);
       toast("保存しました", "success");
+      if (onBack) onBack();
 
       // 共有XMLが有効なら保存
       const settings = await UserStore.loadSettings<{ sharedLibrary?: { enabled: boolean; filename: string } }>();
@@ -148,6 +150,7 @@ const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedIte
   const handleClose = () => {
     setItem({ type: "article-journal" });
     setAuthors([]);
+    onBack?.();
   };
 
   const addAuthor = () => {

@@ -1,8 +1,9 @@
 import * as React from "react";
-import { makeStyles } from "@fluentui/react-components";
+import { makeStyles, TabList, Tab, TabValue } from "@fluentui/react-components";
 import AppBar from "./AppBar";
 import LibraryPanel from "./LibraryPanel";
 import ReferenceDetailPanel from "./ReferenceDetailPanel";
+import BibliographyPanel from "./BibliographyPanel";
 
 const useStyles = makeStyles({
   root: {
@@ -10,27 +11,20 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
   },
-  main: {
+  tabContent: {
     flex: 1,
-    display: "flex",
-  },
-  left: {
-    flex: 7,
-    borderRight: "1px solid #ddd",
-  },
-  right: {
-    flex: 5,
-    padding: "16px",
+    padding: "12px",
+    overflowY: "auto",
   },
 });
 
 const App: React.FC = () => {
   const styles = useStyles();
+  const [tab, setTab] = React.useState<TabValue>("library");
   const [selectedItem, setSelectedItem] = React.useState<any>(null);
   const [styleId, setStyleId] = React.useState("jis-like");
 
   const handleGlobalSearch = (query: string) => {
-    // 詳細編集ダイアログを開く（後で実装）
     console.log("Global search:", query);
   };
 
@@ -45,13 +39,15 @@ const App: React.FC = () => {
   return (
     <div className={styles.root}>
       <AppBar onGlobalSearch={handleGlobalSearch} onStyleChange={handleStyleChange} onSync={handleSync} />
-      <div className={styles.main}>
-        <div className={styles.left}>
-          <LibraryPanel onItemSelect={setSelectedItem} />
-        </div>
-        <div className={styles.right}>
-          <ReferenceDetailPanel selectedItem={selectedItem} />
-        </div>
+      <TabList selectedValue={tab} onTabSelect={(_, d) => setTab(d.value)}>
+        <Tab value="library">ライブラリ</Tab>
+        <Tab value="detail">詳細編集</Tab>
+        <Tab value="bibliography">参考文献</Tab>
+      </TabList>
+      <div className={styles.tabContent}>
+        {tab === "library" && <LibraryPanel onItemSelect={(item) => { setSelectedItem(item); setTab("detail"); }} />}
+        {tab === "detail" && <ReferenceDetailPanel selectedItem={selectedItem} onBack={() => setTab("library")} />}
+        {tab === "bibliography" && <BibliographyPanel />}
       </div>
     </div>
   );
