@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { UserStore } from '../../storage/UserStore';
 import { ImportService } from '../../services/ImportService';
 import { CitationService } from '../../services/CitationService';
+import { SharedLibraryService } from '../../services/SharedLibraryService';
 import { toast } from '../../app/toast';
 
 type Row = { key: string; title: string; author: string; year: string };
@@ -24,6 +25,17 @@ const useStyles = makeStyles({
     display: "block",
     padding: "6px 8px",
     borderBottom: "1px solid #eee",
+    position: "relative",
+  },
+  citeButton: {
+    position: "absolute",
+    right: "8px",
+    top: "6px",
+    opacity: 0,
+    transition: "opacity 0.2s",
+  },
+  rowLabelHover: {
+    position: "relative",
   },
   ml8: {
     marginLeft: "8px",
@@ -74,6 +86,15 @@ const LibraryPanel: React.FC = () => {
     setSelected(s);
   }
 
+  async function onSaveShared() {
+    const settings = await UserStore.loadSettings<{ sharedLibrary?: { enabled: boolean; filename: string } }>();
+    if (!settings?.sharedLibrary?.enabled) {
+      toast('共有ライブラリが有効になっていません', 'info');
+      return;
+    }
+    await SharedLibraryService.saveToFolder(settings.sharedLibrary.filename);
+  }
+
   return (
     <div className={styles.root}>
       <Text>Library Panel - Import and manage citations</Text>
@@ -82,13 +103,14 @@ const LibraryPanel: React.FC = () => {
       </div>
       <div className={styles.mb8}>
         <Button onClick={onLoadSample}>Load Sample Data</Button>
+        <Button onClick={onSaveShared} className={styles.ml8}>共有ライブラリへ保存</Button>
       </div>
       <div className={styles.listBox}>
         {filteredRows.map(r => (
           <label key={r.key} className={styles.rowLabel}>
             <input type="checkbox" checked={selected.has(r.key)} onChange={()=>toggle(r.key)} />
             <span className={styles.ml8}>{r.author} {r.year} — {r.title}</span>
-            <Button className={styles.ml8} onClick={() => CitationService.insertAtSelection([r.key])}>Cite</Button>
+            <Button className={styles.citeButton} onClick={() => CitationService.insertAtSelection([r.key])}>Cite</Button>
           </label>
         ))}
       </div>

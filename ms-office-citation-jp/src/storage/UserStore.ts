@@ -6,7 +6,7 @@ export class UserStore {
   static async saveLibrary(items: any[]): Promise<void> {
     await OfficeRuntime.storage.setItem('library', JSON.stringify(items));
   }
-  static async loadSettings<T=any>(): Promise<T|null> {
+  static async loadSettings<T=AppSettings>(): Promise<T|null> {
     const s = await OfficeRuntime.storage.getItem('settings');
     return s ? JSON.parse(s) : null;
   }
@@ -20,4 +20,17 @@ export class UserStore {
   static async saveRecentKeys(keys: string[]): Promise<void> {
     await OfficeRuntime.storage.setItem('recentKeys', JSON.stringify(keys));
   }
+}
+
+export type AppSettings = {
+  style: 'author-date'|'numeric';
+  locale: 'ja'|'en';
+  sharedLibrary?: {
+    enabled: boolean;
+    filename: string;
+  };
+};
+
+export function defaultSettings(): AppSettings {
+  return { style: 'author-date', locale: 'ja', sharedLibrary: { enabled: false, filename: 'sources.xml' } };
 }

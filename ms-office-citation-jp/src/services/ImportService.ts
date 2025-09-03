@@ -28,6 +28,14 @@ export class ImportService {
     return data.map(x => CSLJSONSchema.parse(x));
   }
 
+  static async importAndMerge(input: string, format: 'bibtex'|'ris'|'csljson'): Promise<void> {
+    const incoming = this.toCSLJSON(input, format);
+    const lib = await UserStore.loadLibrary();
+    const map = new Map<string, any>(lib.map((x: any) => [ImportService.stableKey(x), x]));
+    for (const it of incoming) map.set(ImportService.stableKey(it), it);
+    await UserStore.saveLibrary(Array.from(map.values()));
+  }
+
   static stableKey(it: CSLItem): string {
     if (it.DOI)  return `doi:${it.DOI.toLowerCase()}`;
     if (it.ISBN) return `isbn:${it.ISBN.replace(/-/g,'')}`;
@@ -35,13 +43,5 @@ export class ImportService {
     const title = (it.title ?? '').trim().toLowerCase().replace(/\s+/g,' ');
     const au = (it.author?.[0]?.family ?? '').toLowerCase();
     return `local:${au}|${year}|${title}`;
-  }
-
-  static async importAndMerge(input: string, format: 'bibtex'|'ris'|'csljson'): Promise<void> {
-    const incoming = this.toCSLJSON(input, format);
-    const lib = await UserStore.loadLibrary();
-    const map = new Map<string, any>(lib.map((x: any) => [this.stableKey(x), x]));
-    for (const it of incoming) map.set(this.stableKey(it), it);
-    await UserStore.saveLibrary(Array.from(map.values()));
   }
 }
