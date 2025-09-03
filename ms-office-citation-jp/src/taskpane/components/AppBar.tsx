@@ -4,7 +4,20 @@ import { Search24Regular, ArrowSync24Regular } from "@fluentui/react-icons";
 import { UserStore } from "../../storage/UserStore";
 import { CitationService } from "../../services/CitationService";
 import { SharedLibraryService } from "../../services/SharedLibraryService";
+import { Engine } from "../../engine";
 import { toast } from "../../app/toast";
+
+export const STYLE_PRESETS = [
+  { id: "jis-like", name: "JIS（日本語・既定）", file: "/styles/jis-like.csl" },
+  { id: "apa", name: "APA 7th", file: "/styles/apa.csl" },
+  { id: "mla", name: "MLA 9th", file: "/styles/mla.csl" },
+  { id: "chicago-author-date", name: "Chicago (Author-Date)", file: "/styles/chicago-author-date.csl" },
+  { id: "chicago-notes-bibliography", name: "Chicago (Notes & Bib.)", file: "/styles/chicago-notes-bibliography.csl" },
+  { id: "ieee", name: "IEEE", file: "/styles/ieee.csl" },
+  { id: "vancouver", name: "Vancouver (ICMJE)", file: "/styles/vancouver.csl" },
+  { id: "ama", name: "AMA", file: "/styles/ama.csl" },
+  { id: "harvard", name: "Harvard", file: "/styles/harvard.csl" },
+];
 
 const useStyles = makeStyles({
   root: {
@@ -74,8 +87,18 @@ const AppBar: React.FC<AppBarProps> = ({ onGlobalSearch, onStyleChange, onSync }
     }
   };
 
-  const handleStyleChange = (value: string) => {
+  const handleStyleChange = async (value: string) => {
     setSelectedStyle(value);
+    const preset = STYLE_PRESETS.find(p => p.id === value);
+    if (preset) {
+      try {
+        await Engine.initOnce(preset.file);
+        toast(`${preset.name}スタイルに切り替えました`, "success");
+      } catch (e) {
+        console.error(e);
+        toast("スタイル切り替えに失敗しました", "error");
+      }
+    }
     onStyleChange(value);
   };
 
@@ -110,15 +133,9 @@ const AppBar: React.FC<AppBarProps> = ({ onGlobalSearch, onStyleChange, onSync }
       </div>
       <div className={styles.right}>
         <Dropdown value={selectedStyle} onOptionSelect={(_, data) => handleStyleChange(data.optionValue!)}>
-          <Option value="jis-like">JIS</Option>
-          <Option value="apa">APA</Option>
-          <Option value="mla">MLA</Option>
-          <Option value="chicago-author-date">Chicago (Author-Date)</Option>
-          <Option value="chicago-notes-bibliography">Chicago (Notes)</Option>
-          <Option value="ieee">IEEE</Option>
-          <Option value="vancouver">Vancouver</Option>
-          <Option value="ama">AMA</Option>
-          <Option value="harvard">Harvard</Option>
+          {STYLE_PRESETS.map(preset => (
+            <Option key={preset.id} value={preset.id}>{preset.name}</Option>
+          ))}
         </Dropdown>
         <Button icon={<ArrowSync24Regular />} onClick={handleSync}>
           同期

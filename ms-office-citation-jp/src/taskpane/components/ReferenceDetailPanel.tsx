@@ -4,6 +4,44 @@ import { UserStore } from "../../storage/UserStore";
 import { ImportService } from "../../services/ImportService";
 import { SharedLibraryService } from "../../services/SharedLibraryService";
 import { toast } from "../../app/toast";
+import { z } from "zod";
+
+const itemSchema = z.object({
+  type: z.string().min(1, "タイプは必須です"),
+  title: z.string().min(1, "タイトルは必須です"),
+  author: z.array(z.object({
+    family: z.string().optional(),
+    given: z.string().optional(),
+  })).optional(),
+  issued: z.object({
+    "date-parts": z.array(z.array(z.number())),
+  }).optional(),
+  language: z.string().optional(),
+  DOI: z.string().optional(),
+  URL: z.string().optional(),
+  ISBN: z.string().optional(),
+  "container-title": z.string().optional(),
+  publisher: z.string().optional(),
+  "publisher-place": z.string().optional(),
+  page: z.string().optional(),
+  volume: z.string().optional(),
+  issue: z.string().optional(),
+  genre: z.string().optional(),
+  "archive-location": z.string().optional(),
+  version: z.string().optional(),
+  note: z.string().optional(),
+}).refine((data) => {
+  if (data.type === "article-journal") {
+    return data["container-title"] && data["container-title"].length > 0;
+  }
+  if (data.type === "book") {
+    return (data.publisher && data.publisher.length > 0) || (data.ISBN && data.ISBN.length > 0);
+  }
+  return true;
+}, {
+  message: "タイプに応じた必須フィールドが不足しています",
+  path: ["type"],
+});
 
 const useStyles = makeStyles({
   root: {
@@ -57,6 +95,14 @@ const ReferenceDetailPanel: React.FC<ReferenceDetailPanelProps> = ({ selectedIte
   const handleSave = async () => {
     try {
       const updatedItem = { ...item, author: authors };
+      const validationResult = itemSchema.safeParse(updatedItem);
+      if (!validationResult.success) {
+        const errors = validationResult.error.format();
+        const errorMessage = Object.values(errors).flat().filter(err => typeof err === 'object' && err !== null && 'message' in err).map(err => (err as any).message).join(", ");
+        toast(errorMessage, "error");
+        return;
+      }
+
       const lib = await UserStore.loadLibrary();
       const index = lib.findIndex(it => ImportService.stableKey(it) === ImportService.stableKey(updatedItem));
       if (index >= 0) {

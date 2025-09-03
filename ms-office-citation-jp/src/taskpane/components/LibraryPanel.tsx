@@ -34,6 +34,7 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
   const [rows, setRows] = useState<Row[]>([]);
   const [filteredRows, setFilteredRows] = useState<Row[]>([]);
   const [search, setSearch] = useState<string>('');
+  const [searchIndex, setSearchIndex] = useState<Map<string, Set<string>>>(new Map());
   const [selection] = useState(() => new Selection({
     onSelectionChanged: () => {
       const selected = selection.getSelection();
@@ -129,20 +130,39 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
     });
     setRows(rs);
     setFilteredRows(rs);
+
+    // Build search index
+    const index = new Map<string, Set<string>>();
+    rs.forEach(r => {
+      const text = `${r.title} ${r.author} ${r.year} ${r.doi} ${r.isbn}`.toLowerCase();
+      for (let i = 0; i < text.length - 2; i++) {
+        const ngram = text.substring(i, i + 3);
+        if (!index.has(ngram)) index.set(ngram, new Set());
+        index.get(ngram)!.add(r.key);
+      }
+    });
+    setSearchIndex(index);
   }
 
   useEffect(() => { void refresh(); }, []);
 
   useEffect(() => {
-    const filtered = rows.filter(r =>
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.author.toLowerCase().includes(search.toLowerCase()) ||
-      r.year.includes(search) ||
-      r.doi.toLowerCase().includes(search.toLowerCase()) ||
-      r.isbn.toLowerCase().includes(search.toLowerCase())
-    );
+    if (search.length < 3) {
+      setFilteredRows(rows);
+      return;
+    }
+    const query = search.toLowerCase();
+    const matchedKeys = new Set<string>();
+    for (let i = 0; i < query.length - 2; i++) {
+      const ngram = query.substring(i, i + 3);
+      const keys = searchIndex.get(ngram);
+      if (keys) {
+        keys.forEach(k => matchedKeys.add(k));
+      }
+    }
+    const filtered = rows.filter(r => matchedKeys.has(r.key));
     setFilteredRows(filtered);
-  }, [search, rows]);
+  }, [search, rows, searchIndex]);
 
   const sortBy = (field: string) => {
     const sorted = [...filteredRows].sort((a, b) => {

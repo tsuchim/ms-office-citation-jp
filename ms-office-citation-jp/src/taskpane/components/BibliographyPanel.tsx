@@ -24,6 +24,8 @@ const useStyles = makeStyles({
     padding: "8px",
     overflowY: "auto",
     backgroundColor: "#f9f9f9",
+    lineHeight: "1.6",
+    fontFamily: "monospace",
   },
   buttons: {
     display: "flex",
@@ -57,6 +59,16 @@ const BibliographyPanel: React.FC = () => {
     setSelectedStyle(value);
   };
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(previewHtml);
+      toast("コピーしました", "success");
+    } catch (e) {
+      console.error(e);
+      toast("コピーに失敗しました", "error");
+    }
+  };
+
   const handleApplyToDocument = async () => {
     try {
       await BibliographyService.updateBibliographyInDocument(selectedStyle);
@@ -86,6 +98,7 @@ const BibliographyPanel: React.FC = () => {
       </div>
       <div className={styles.preview} dangerouslySetInnerHTML={{ __html: previewHtml }} />
       <div className={styles.buttons}>
+        <Button onClick={copyToClipboard}>コピー</Button>
         <Button onClick={handleApplyToDocument}>本文に反映</Button>
       </div>
     </div>

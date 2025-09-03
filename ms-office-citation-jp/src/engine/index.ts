@@ -12,10 +12,11 @@ class EngineSingleton {
   return this._engine;
   }
 
-  initOnce(): Promise<void> {
+  initOnce(styleFile?: string): Promise<void> {
   if (this._initing) return this._initing;
   this._engine = new CiteProcEngine();
-  this._initing = this._engine.init({ styleXml: jisCslXml as unknown as string, localeXml: jaLocaleXml as unknown as string });
+  const styleXml = styleFile ? fetch(styleFile).then(r => r.text()) : Promise.resolve(jisCslXml as unknown as string);
+  this._initing = styleXml.then(xml => this._engine!.init({ styleXml: xml, localeXml: jaLocaleXml as unknown as string }));
   return this._initing;
   }
 }

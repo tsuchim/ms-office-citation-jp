@@ -11,6 +11,14 @@ const useStyles = makeStyles({
     border: "1px solid #ddd",
     padding: "8px",
     marginBottom: "8px",
+    display: "flex",
+    alignItems: "flex-start",
+  },
+  dragHandle: {
+    cursor: "grab",
+    marginRight: "8px",
+    fontSize: "18px",
+    userSelect: "none",
   },
   field: {
     marginBottom: "8px",
@@ -45,6 +53,7 @@ interface CitationGroupEditorProps {
 const CitationGroupEditor: React.FC<CitationGroupEditorProps> = ({ citeControlId, items, onClose }) => {
   const styles = useStyles();
   const [editedItems, setEditedItems] = React.useState<CitationItem[]>(items);
+  const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null);
 
   const updateItem = (index: number, field: keyof CitationItem, value: any) => {
     const newItems = [...editedItems];
@@ -77,11 +86,38 @@ const CitationGroupEditor: React.FC<CitationGroupEditorProps> = ({ citeControlId
     }
   };
 
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const newItems = [...editedItems];
+    const draggedItem = newItems[draggedIndex];
+    newItems.splice(draggedIndex, 1);
+    newItems.splice(index, 0, draggedItem);
+    setEditedItems(newItems);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   return (
     <div className={styles.root}>
       <h2>引用グループ編集</h2>
       {editedItems.map((item, index) => (
-        <div key={item.key} className={styles.item}>
+        <div
+          key={item.key}
+          className={styles.item}
+          draggable
+          onDragStart={() => handleDragStart(index)}
+          onDragOver={(e) => handleDragOver(e, index)}
+          onDragEnd={handleDragEnd}
+        >
+          <div className={styles.dragHandle}>:::</div>
           <div className={styles.field}>
             <label className={styles.label}>文献 {index + 1}</label>
             <div>キー: {item.key}</div>

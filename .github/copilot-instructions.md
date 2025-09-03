@@ -58,6 +58,10 @@ export interface CiteEngine {
 * `engine/citeproc/adapter.ts` に `CiteEngine` 実装を配置
 * UI/サービス層は **この IF のみを利用**。内部実装に触れない
 
+## ライセンス
+* コード本体：AGPLv3
+* CSL スタイル：CC BY-SA 3.0
+
 ---
 
 ## Word 連携規約
