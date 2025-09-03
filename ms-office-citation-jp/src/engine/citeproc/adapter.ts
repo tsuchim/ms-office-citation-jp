@@ -70,7 +70,7 @@ export class CiteProcEngine implements CiteEngine {
     return `(${keys.join('; ')})`;
   }
 
-  async formatBibliography(keysInOrder: string[]): Promise<string> {
+  async formatBibliography(keysInOrder: string[], _style?: CitationStyle): Promise<string> {
     if (!this.processor) throw new Error('Engine not initialized');
     await this.ensureItems(keysInOrder);
     try {

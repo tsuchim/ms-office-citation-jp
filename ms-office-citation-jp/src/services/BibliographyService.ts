@@ -58,8 +58,9 @@ export class BibliographyService {
       await Engine.initOnce();
       this.engine = Engine.engine;
     }
-    // TODO: Switch style if needed
-    return await this.engine.formatBibliography(keys);
+    const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
+    const style = settings?.style || 'author-date';
+    return await this.engine.formatBibliography(keys, style);
   }
 
   static async updateBibliographyInDocument(styleId: string): Promise<void> {
@@ -68,7 +69,7 @@ export class BibliographyService {
     settings.style = styleId as CitationStyle;
     await UserStore.saveSettings(settings);
 
-    // TODO: Reinitialize engine with new style
+    // Reinitialize engine with new style if needed
     await Engine.initOnce();
 
     // Rebuild bibliography

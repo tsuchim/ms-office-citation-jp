@@ -2,7 +2,7 @@ import { PublicClientApplication, AccountInfo } from '@azure/msal-browser';
 
 const msal = new PublicClientApplication({
   auth: {
-    clientId: "<YOUR-AAD-APP-ID>", // TODO: Replace with actual client ID
+    clientId: process.env.AZURE_CLIENT_ID || "<YOUR-AAD-APP-ID>", // Replace with actual client ID or set AZURE_CLIENT_ID
     authority: "https://login.microsoftonline.com/common",
     redirectUri: window.location.origin
   },
