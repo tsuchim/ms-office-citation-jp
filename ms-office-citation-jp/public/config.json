@@ -1,0 +1,5 @@
+{
+  "azureClientId": "a3ae86e9-a5a4-4f4c-86ef-c1f83f4a68ef",
+  "authority": "https://login.microsoftonline.com/e8f55b74-0460-4d14-bd12-7c9d0bf27f13",
+  "redirectUri": "https://tsuchim.github.io/ms-office-citation-jp/auth.html"
+}
