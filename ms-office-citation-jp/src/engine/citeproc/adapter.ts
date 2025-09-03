@@ -2,6 +2,7 @@ import { CiteEngine, CitationStyle } from '../interfaces';
 import CSL from 'citeproc';
 import { UserStore } from '../../storage/UserStore';
 import { ImportService } from '../../services/ImportService';
+import { CitationOptions } from '../../storage/DocStore';
 
 export class CiteProcEngine implements CiteEngine {
   private processor: any = null;
@@ -41,10 +42,20 @@ export class CiteProcEngine implements CiteEngine {
     }
   }
 
-  async formatInText(keys: string[], _ctx: { style: CitationStyle; seqMap?: Record<string, number> }): Promise<string> {
+  async formatInText(keys: string[], _ctx: { style: CitationStyle; seqMap?: Record<string, number>; options?: CitationOptions }): Promise<string> {
     if (!this.processor) throw new Error('Engine not initialized');
     await this.ensureItems(keys);
-    const citationItems = keys.map((id) => ({ id }));
+    const citationItems = keys.map((id) => {
+      const item: any = { id };
+      if (_ctx.options) {
+        if (_ctx.options.locator) item.locator = _ctx.options.locator;
+        if (_ctx.options.prefix) item.prefix = _ctx.options.prefix;
+        if (_ctx.options.suffix) item.suffix = _ctx.options.suffix;
+        if (_ctx.options.suppressAuthor) item['suppress-author'] = true;
+        if (_ctx.options.suppressYear) item['suppress-year'] = true;
+      }
+      return item;
+    });
     try {
       this.processor.updateItems(keys);
       const out = this.processor.makeCitationCluster(citationItems);

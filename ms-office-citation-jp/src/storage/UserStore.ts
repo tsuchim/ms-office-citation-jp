@@ -13,4 +13,11 @@ export class UserStore {
   static async saveSettings(s: any): Promise<void> {
     await OfficeRuntime.storage.setItem('settings', JSON.stringify(s));
   }
+  static async loadRecentKeys(): Promise<string[]> {
+    const s = await OfficeRuntime.storage.getItem('recentKeys');
+    return s ? JSON.parse(s) : [];
+  }
+  static async saveRecentKeys(keys: string[]): Promise<void> {
+    await OfficeRuntime.storage.setItem('recentKeys', JSON.stringify(keys));
+  }
 }

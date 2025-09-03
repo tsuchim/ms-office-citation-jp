@@ -12,7 +12,7 @@ export class CitationService {
     this.engine = Engine.engine;
   }
 
-  static async insertAtSelection(keys: string[]): Promise<void> {
+  static async insertAtSelection(keys: string[], options?: CitationOptions): Promise<void> {
     // Ensure engine is ready even if init() didn't run yet
     if (!this.engine) {
       await Engine.initOnce();
@@ -20,9 +20,14 @@ export class CitationService {
     }
     const settings = await UserStore.loadSettings<{ style: CitationStyle }>();
     const style = settings?.style || 'author-date';
-    const text = await CitationService.engine.formatInText(keys, { style });
-    const tag: CiteTag = { keys, style, seq: null };
+    const text = await CitationService.engine.formatInText(keys, { style, options });
+    const tag: CiteTag = { keys, style, seq: null, options };
     await WordApi.createCiteCCAtSelection(tag, text);
+
+    // Update recent keys
+    const recent = await UserStore.loadRecentKeys();
+    const updated = keys.concat(recent.filter(k => !keys.includes(k))).slice(0, 20);
+    await UserStore.saveRecentKeys(updated);
   }
 
   static async updateAll(): Promise<void> {

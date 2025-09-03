@@ -1,8 +1,9 @@
 import * as React from "react";
-import { makeStyles, Button, Text } from "@fluentui/react-components";
+import { makeStyles, Button, Text, Input } from "@fluentui/react-components";
 import { useEffect, useState } from 'react';
 import { UserStore } from '../../storage/UserStore';
 import { ImportService } from '../../services/ImportService';
+import { CitationService } from '../../services/CitationService';
 import { toast } from '../../app/toast';
 
 type Row = { key: string; title: string; author: string; year: string };
@@ -36,6 +37,7 @@ const LibraryPanel: React.FC = () => {
   const styles = useStyles();
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState<string>('');
 
   async function refresh() {
     const lib = await UserStore.loadLibrary();
@@ -49,6 +51,12 @@ const LibraryPanel: React.FC = () => {
   }
 
   useEffect(() => { void refresh(); }, []);
+
+  const filteredRows = rows.filter(r =>
+    r.title.toLowerCase().includes(search.toLowerCase()) ||
+    r.author.toLowerCase().includes(search.toLowerCase()) ||
+    r.year.includes(search)
+  );
 
   async function onLoadSample() {
     try {
@@ -69,18 +77,22 @@ const LibraryPanel: React.FC = () => {
   return (
     <div className={styles.root}>
       <Text>Library Panel - Import and manage citations</Text>
-  <div className={styles.mb8}>
+      <div className={styles.mb8}>
+        <Input placeholder="検索 (タイトル/著者/年)" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+      <div className={styles.mb8}>
         <Button onClick={onLoadSample}>Load Sample Data</Button>
       </div>
-  <div className={styles.listBox}>
-        {rows.map(r => (
-      <label key={r.key} className={styles.rowLabel}>
+      <div className={styles.listBox}>
+        {filteredRows.map(r => (
+          <label key={r.key} className={styles.rowLabel}>
             <input type="checkbox" checked={selected.has(r.key)} onChange={()=>toggle(r.key)} />
-    <span className={styles.ml8}>{r.author} {r.year} — {r.title}</span>
+            <span className={styles.ml8}>{r.author} {r.year} — {r.title}</span>
+            <Button className={styles.ml8} onClick={() => CitationService.insertAtSelection([r.key])}>Cite</Button>
           </label>
         ))}
       </div>
-  <div className={styles.mt8}>
+      <div className={styles.mt8}>
         <Button
           onClick={()=>{
             const arr = Array.from(selected);
