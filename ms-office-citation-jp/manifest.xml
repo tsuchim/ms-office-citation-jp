@@ -20,13 +20,6 @@
     <SourceLocation DefaultValue="https://tsuchim.github.io/ms-office-citation-jp/taskpane.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
-  <WebApplicationInfo>
-    <Id>b12353ef-13c7-4b1c-8ef6-372be66278ae</Id>
-    <Resource>api://localhost:3000/b12353ef-13c7-4b1c-8ef6-372be66278ae</Resource>
-    <Scopes>
-      <Scope>Files.ReadWrite</Scope>
-    </Scopes>
-  </WebApplicationInfo>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>
       <Host xsi:type="Document">

@@ -1,31 +1,26 @@
-import { PublicClientApplication, AccountInfo } from '@azure/msal-browser';
+import { PublicClientApplication } from '@azure/msal-browser';
+import { loadConfig } from '../config';
 
-const msal = new PublicClientApplication({
-  auth: {
-    clientId: process.env.AZURE_CLIENT_ID || "<YOUR-AAD-APP-ID>", // Replace with actual client ID or set AZURE_CLIENT_ID
-    authority: "https://login.microsoftonline.com/common",
-    redirectUri: window.location.origin
-  },
-  cache: { cacheLocation: "localStorage" }
-});
+let msal: PublicClientApplication | null = null;
 
-let account: AccountInfo | null = null;
-
-export async function loginIfNeeded(): Promise<void> {
-  if (account) return;
-  const accs = msal.getAllAccounts();
-  if (accs.length) { account = accs[0]; return; }
-  const res = await msal.loginPopup({ scopes: ["Files.ReadWrite", "Sites.ReadWrite.All", "User.Read"] });
-  account = res.account!;
+export async function getMsal(): Promise<PublicClientApplication> {
+  if (msal) return msal;
+  const cfg = await loadConfig();
+  msal = new PublicClientApplication({
+    auth: {
+      clientId: cfg.azureClientId,
+      authority: cfg.authority,
+      redirectUri: cfg.redirectUri
+    },
+    cache: { cacheLocation: 'sessionStorage' }
+  });
+  return msal;
 }
 
-export async function getToken(): Promise<string> {
-  await loginIfNeeded();
-  const res = await msal.acquireTokenSilent({
-    account: msal.getAllAccounts()[0],
-    scopes: ["Files.ReadWrite", "Sites.ReadWrite.All", "User.Read"]
-  }).catch(()=> msal.acquireTokenPopup({
-    scopes: ["Files.ReadWrite", "Sites.ReadWrite.All", "User.Read"]
-  }));
-  return res!.accessToken;
+export async function loginIfNeeded(): Promise<void> {
+  const msalInstance = await getMsal();
+  const accs = msalInstance.getAllAccounts();
+  if (accs.length) return;
+  const res = await msalInstance.loginPopup({ scopes: ['User.Read'] });
+  // account is stored automatically
 }
