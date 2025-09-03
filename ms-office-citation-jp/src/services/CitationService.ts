@@ -1,7 +1,7 @@
 import { WordApi } from '../office/WordApi';
 import { CiteEngine, CitationStyle } from '../engine/interfaces';
 import { UserStore } from '../storage/UserStore';
-import { CiteTag } from '../storage/DocStore';
+import { CiteTag, CitationOptions } from '../storage/DocStore';
 import { Engine } from '../engine';
 
 export class CitationService {
