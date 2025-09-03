@@ -7,10 +7,14 @@ import { toast } from "../../app/toast";
 
 const useStyles = makeStyles({
   root: {
-    padding: "16px",
+    padding: "8px 12px",
     display: "flex",
     flexDirection: "column",
     height: "100%",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    overflowX: "hidden",
   },
   controls: {
     display: "flex",

@@ -10,11 +10,21 @@ const useStyles = makeStyles({
     minHeight: "100vh",
     display: "flex",
     flexDirection: "column",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,             // ← 横はみ出し抑止の肝
+    overflowX: "hidden",
+    boxSizing: "border-box",
   },
   tabContent: {
     flex: 1,
-    padding: "12px",
+    padding: "8px 12px",
     overflowY: "auto",
+    overflowX: "hidden",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
   },
 });
 

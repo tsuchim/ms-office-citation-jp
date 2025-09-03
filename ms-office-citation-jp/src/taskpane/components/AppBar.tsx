@@ -20,27 +20,26 @@ export const STYLE_PRESETS = [
 ];
 
 const useStyles = makeStyles({
-  root: {
-    display: "flex",
-    alignItems: "center",
-    padding: "8px 16px",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f8f9fa",
-  },
-  left: {
-    flex: 1,
-    display: "flex",
-    alignItems: "center",
-  },
-  right: {
-    display: "flex",
+  bar: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr auto",
     alignItems: "center",
     gap: "8px",
+    padding: "8px 12px",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   },
-  search: {
-    width: "300px",
-    marginLeft: "16px",
+  wrap: {
+    // 幅が狭い（<=480px）時は縦積み
+    "@media (max-width: 480px)": {
+      gridTemplateColumns: "1fr",
+      gridAutoRows: "auto",
+    },
   },
+  grow: { width: "100%", maxWidth: "100%" },
+  title: { whiteSpace: "nowrap" },
+  right: { display: "flex", gap: "8px" },
 });
 
 interface AppBarProps {
@@ -119,18 +118,16 @@ const AppBar: React.FC<AppBarProps> = ({ onGlobalSearch, onStyleChange, onSync }
   };
 
   return (
-    <div className={styles.root}>
-      <div className={styles.left}>
-        <span>MS Office Citation JP</span>
-        <Input
-          className={styles.search}
-          placeholder="検索 (著者/タイトル/DOI)"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={handleSearchKeyDown}
-          contentBefore={<Search24Regular />}
-        />
-      </div>
+    <div className={`${styles.bar} ${styles.wrap}`}>
+      <div className={styles.title}>MS Office<br/>Citation JP</div>
+      <Input
+        className={styles.grow}
+        placeholder="検索 (著者/タイトル/DOI)"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={handleSearchKeyDown}
+        contentBefore={<Search24Regular />}
+      />
       <div className={styles.right}>
         <Dropdown value={selectedStyle} onOptionSelect={(_, data) => handleStyleChange(data.optionValue!)}>
           {STYLE_PRESETS.map(preset => (

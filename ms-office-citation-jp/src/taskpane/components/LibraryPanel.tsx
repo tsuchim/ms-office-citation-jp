@@ -12,7 +12,11 @@ type Row = { key: string; title: string; author: string; year: string; type: str
 
 const useStyles = makeStyles({
   root: {
-    padding: "20px",
+    padding: "8px 12px",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    overflowX: "hidden",
   },
   mb8: {
     marginBottom: "8px",
@@ -22,6 +26,21 @@ const useStyles = makeStyles({
   },
   ml8: {
     marginLeft: "8px",
+  },
+  toolbar: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+    marginBottom: "8px",
+    flexWrap: "wrap",
+    "@media (max-width: 480px)": { flexDirection: "column", alignItems:"stretch" },
+  },
+  search: { width: "100%" },
+  titleCell: {
+    display: "block",
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+    lineHeight: 1.3,
   },
 });
 
@@ -47,18 +66,20 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
   const columns: IColumn[] = [
     {
       key: 'type',
-      name: 'タイプ',
+      name: ' ',
       fieldName: 'type',
-      minWidth: 60,
-      maxWidth: 80,
+      minWidth: 24,
+      maxWidth: 24,
+      isResizable: false,
       onRender: (item: Row) => <span>{getTypeIcon(item.type)}</span>,
     },
     {
       key: 'author',
       name: '著者',
       fieldName: 'author',
-      minWidth: 100,
-      maxWidth: 150,
+      minWidth: 80,
+      maxWidth: 140,
+      isResizable: true,
       isSorted: true,
       isSortedDescending: false,
       onColumnClick: () => sortBy('author'),
@@ -67,8 +88,9 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
       key: 'year',
       name: '年',
       fieldName: 'year',
-      minWidth: 50,
-      maxWidth: 70,
+      minWidth: 52,
+      maxWidth: 56,
+      isResizable: false,
       isSorted: true,
       isSortedDescending: true,
       onColumnClick: () => sortBy('year'),
@@ -77,8 +99,12 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
       key: 'title',
       name: 'タイトル',
       fieldName: 'title',
-      minWidth: 200,
-      onRender: (item: Row) => <span title={item.title}>{item.title.length > 50 ? item.title.substring(0, 50) + '...' : item.title}</span>,
+      minWidth: 120,
+      isResizable: true,
+      isMultiline: true,
+      onRender: (item: Row) => <span className={styles.titleCell}>
+        {item.title}
+      </span>,
     },
     {
       key: 'containerTitle',
@@ -242,20 +268,28 @@ const LibraryPanel: React.FC<LibraryPanelProps> = ({ onItemSelect }) => {
     <div className={styles.root}>
       <Text>ライブラリ</Text>
       <div className={styles.mb8}>
-        <TextField placeholder="検索 (タイトル/著者/年/DOI/ISBN)" value={search} onChange={(_, newValue) => setSearch(newValue || '')} />
+        <TextField className={styles.search} placeholder="検索 (タイトル/著者/年/DOI/ISBN)" value={search} onChange={(_, newValue) => setSearch(newValue || '')} />
       </div>
-      <div className={styles.mb8}>
+      <div className={styles.toolbar}>
         <Button onClick={handleLoadSample}>サンプル読み込み</Button>
-        <Button onClick={handleSaveShared} className={styles.ml8}>共有保存</Button>
+        <Button onClick={handleSaveShared}>共有保存</Button>
       </div>
       <DetailsList
         items={filteredRows}
         columns={columns}
         setKey="key"
-        layoutMode={DetailsListLayoutMode.justified}
+        layoutMode={DetailsListLayoutMode.fixedColumns} // 列幅の暴走防止
+        compact={true}                                  // 行高を詰める
+        isHeaderVisible={true}
         selection={selection}
         selectionPreservedOnEmptyClick={true}
         enterModalSelectionOnTouch={true}
+        styles={{
+          root: {
+            overflowX: "hidden", // 横スクロール禁止
+            width: "100%", maxWidth: "100%", minWidth: 0,
+          },
+        }}
       />
     </div>
   );

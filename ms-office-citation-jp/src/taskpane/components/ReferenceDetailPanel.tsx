@@ -45,7 +45,11 @@ const itemSchema = z.object({
 
 const useStyles = makeStyles({
   root: {
-    padding: "16px",
+    padding: "8px 12px",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    overflowX: "hidden",
   },
   field: {
     marginBottom: "16px",
