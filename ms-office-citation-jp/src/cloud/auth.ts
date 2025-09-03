@@ -24,3 +24,14 @@ export async function loginIfNeeded(): Promise<void> {
   const res = await msalInstance.loginPopup({ scopes: ['User.Read'] });
   // account is stored automatically
 }
+
+export async function getToken(): Promise<string> {
+  const msalInstance = await getMsal();
+  const accs = msalInstance.getAllAccounts();
+  if (!accs.length) {
+    await loginIfNeeded();
+  }
+  const request = { scopes: ['User.Read'] };
+  const response = await msalInstance.acquireTokenSilent(request);
+  return response.accessToken;
+}
