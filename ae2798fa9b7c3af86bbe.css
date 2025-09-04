@@ -1,0 +1,58 @@
+/* 横はみ出し防止の基本 */
+html, body, #container, #root { width:100%; max-width:100%; overflow-x:hidden; box-sizing:border-box; }
+
+/* DetailsList を“極小”表示に寄せる */
+.ms-DetailsHeader, .ms-DetailsHeader-cell { min-height:28px; }
+.ms-DetailsHeader-cellTitle { font-size:12px; line-height:28px; }
+.ms-DetailsRow { min-height:28px; }
+.ms-DetailsRow-fields > .ms-DetailsRow-cell {
+  padding: 2px 6px;          /* セル余白を削減 */
+  box-sizing: border-box;
+  min-width: 0; /* セル内フレックス要素にのみ付与 */
+}
+
+/* 著者は1行省略、タイトルは2行まで表示して省略（Edge/ChromiumでOK） */
+.cell-ellipsis {
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.cell-title-clamp {
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; /* 2行 */
+  line-clamp: 2; /* 標準プロパティ */
+  overflow:hidden; word-break:break-word; line-height:1.25; max-height: 2.5em;
+}
+
+/* アイコン列を本当に小さく */
+.ms-DetailsRow-cell:first-child { width:16px !important; max-width:16px !important; padding-right:4px; }
+
+/* 列の余白を全体的に抑える */
+.ms-DetailsHeader-cell { padding: 0 6px; }
+
+/* Fluent UI 内部の最小幅伝播（最後の一押し） */
+.ms-DetailsList .ms-DetailsRow-fields { min-width:280px; }
+.ms-DetailsList .ms-DetailsRow-cell {
+  flex:1 1 auto; min-width:0; max-width:none;
+  white-space:normal; word-break:normal; overflow-wrap:break-word;
+}
+
+/* チェック列を完全非表示 + 先頭セル16px強制の無効化 */
+.ms-DetailsList .ms-DetailsHeader-cellIsCheck { display: none !important; }
+.ms-DetailsList .ms-DetailsRow-cellCheck     { display: none !important; }
+.ms-DetailsList .ms-DetailsRow-cell:first-child:not(.ms-DetailsRow-checkCell) {
+  width: auto !important;
+  max-width: none !important;
+}
+
+/* セル内Flexの仕上げ（日本語/英語混在の折返し） */
+.cellContent{
+  display:flex; flex-direction:column;
+  width:100%; flex:1 1 auto; min-width:0; line-height:1.4;
+}
+.primary{
+  font-weight:600;
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.secondary{
+  min-width:0; overflow:hidden; white-space:normal; word-break:normal; overflow-wrap:break-word;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  line-clamp: 2;
+}
