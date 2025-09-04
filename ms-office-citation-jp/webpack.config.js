@@ -86,6 +86,10 @@ module.exports = async (env, options) => {
               }
             },
           },
+          {
+            from: "public/config.json",
+            to: "config.json",
+          },
         ],
       }),
       new HtmlWebpackPlugin({

@@ -1,17 +1,16 @@
-export interface Config {
+export type AppConfig = {
   azureClientId: string;
   authority: string;
   redirectUri: string;
-}
+};
 
-let configCache: Config | null = null;
+export async function loadConfig(): Promise<AppConfig> {
+  // 先頭 "/" は使わない。配信中の HTML と同ディレクトリ基準で解決する
+  const url = new URL('config.json', window.location.href).toString();
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`config.json not found: ${res.status}`);
+  const cfg = (await res.json()) as AppConfig;
 
-export async function loadConfig(): Promise<Config> {
-  if (configCache) return configCache;
-  const response = await fetch('/config.json');
-  if (!response.ok) {
-    throw new Error('Failed to load config.json');
-  }
-  configCache = await response.json();
-  return configCache!;
+  if (!cfg.azureClientId) throw new Error('Invalid config: missing azureClientId');
+  return cfg;
 }
